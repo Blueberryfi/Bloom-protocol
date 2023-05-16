@@ -1,6 +1,10 @@
 [profile.default]
-src = "src"
-out = "out"
-libs = ["lib"]
+src = 'src'
+out = 'out'
+libs = ['lib']
+optimizer_runs = 0xffffffff
+
+[fuzz]
+runs = 10000
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
