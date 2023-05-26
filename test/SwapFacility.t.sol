@@ -22,12 +22,14 @@ contract SwapFacilityTest is Test {
     MockOracle internal ib01Oracle;
 
     address internal user = makeAddr("user");
+    address internal user2 = makeAddr("user2");
 
     // ============== Redefined Errors ===============
     error InvalidAddress();
     error InvalidToken();
     error PoolNotSet();
     error NotPool();
+    error NotWhitelisted();
 
     // ============== Redefined Events ===============
     event PoolUpdated(address indexed oldPool, address indexed newPool);
@@ -52,12 +54,14 @@ contract SwapFacilityTest is Test {
         vm.label(address(ib01Oracle), "BillyTokenOracle");
         usdcOracle.setAnswer(100000000);
         ib01Oracle.setAnswer(10000000000);
+        whitelist = new MockWhitelist();
 
         swap = new SwapFacility(
             address(stableToken),
             address(billyToken),
             address(usdcOracle),
             address(ib01Oracle),
+            address(whitelist),
             15000000
         );
         vm.label(address(swap), "SwapFacility");
@@ -83,11 +87,12 @@ contract SwapFacilityTest is Test {
 
     function completePreHoldSwap() public {
         initPreHoldSwap();
+        whitelist.add(user);
 
         billyToken.mint(user, 100.2 ether);
         startHoax(user);
         billyToken.approve(address(swap), 100.2 ether);
-        swap.swap(address(billyToken), address(stableToken), 100.2 ether);
+        swap.swap(address(billyToken), address(stableToken), 100.2 ether, "");
         vm.stopPrank();
     }
 
@@ -114,47 +119,71 @@ contract SwapFacilityTest is Test {
     }
 
     function test_swap_fail_with_PoolNotSet() public {
+        startHoax(user);
+
         vm.expectRevert(PoolNotSet.selector);
         pool.initiatePreHoldSwap();
+
+        vm.stopPrank();
     }
 
     function test_swap_fail_with_InvalidToken_stage_0() public {
         swap.setPool(address(pool));
+        whitelist.add(user);
+        startHoax(user);
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(randomToken), address(billyToken), 100 ether);
+        swap.swap(address(randomToken), address(billyToken), 100 ether, "");
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(stableToken), address(randomToken), 100 ether);
+        swap.swap(address(stableToken), address(randomToken), 100 ether, "");
+
+        vm.stopPrank();
     }
 
     function test_swap_fail_with_NotPool_stage_0() public {
         swap.setPool(address(pool));
+        whitelist.add(user);
+        startHoax(user);
 
         vm.expectRevert(NotPool.selector);
-        swap.swap(address(stableToken), address(billyToken), 100 ether);
+        swap.swap(address(stableToken), address(billyToken), 100 ether, "");
+
+        vm.stopPrank();
     }
 
     function test_swap_success_stage_0() public {
         initPreHoldSwap();
     }
 
-    function test_swap_fail_with_InvalidToken_stage_1() public {
+    function test_swap_fail_with_NotWhitelisted_stage_1() public {
         initPreHoldSwap();
 
         startHoax(user);
 
-        vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(randomToken), address(stableToken), 100 ether);
+        vm.expectRevert(NotWhitelisted.selector);
+        swap.swap(address(randomToken), address(stableToken), 100 ether, "");
+
+        vm.stopPrank();
+    }
+
+    function test_swap_fail_with_InvalidToken_stage_1() public {
+        initPreHoldSwap();
+        whitelist.add(user);
+        startHoax(user);
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(billyToken), address(randomToken), 100 ether);
+        swap.swap(address(randomToken), address(stableToken), 100 ether, "");
+
+        vm.expectRevert(InvalidToken.selector);
+        swap.swap(address(billyToken), address(randomToken), 100 ether, "");
 
         vm.stopPrank();
     }
 
     function test_swap_success_stage_1() public {
         initPreHoldSwap();
+        whitelist.add(user);
 
         startHoax(user);
         billyToken.mint(user, 10 ether);
@@ -162,7 +191,7 @@ contract SwapFacilityTest is Test {
 
         vm.expectEmit(true, true, true, true, address(swap));
         emit Swap(address(billyToken), address(stableToken), 10 ether, 998_500000, user);
-        swap.swap(address(billyToken), address(stableToken), 10 ether);
+        swap.swap(address(billyToken), address(stableToken), 10 ether, "");
 
         assertEq(stableToken.balanceOf(user), 998_500000);
         assertEq(billyToken.balanceOf(address(pool)), 10 ether);
@@ -173,24 +202,44 @@ contract SwapFacilityTest is Test {
     function test_swap_fail_with_InvalidToken_stage_2() public {
         completePreHoldSwap();
 
-        vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(randomToken), address(billyToken), 100 ether);
+        startHoax(user);
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(stableToken), address(randomToken), 100 ether);
+        swap.swap(address(randomToken), address(billyToken), 100 ether, "");
+
+        vm.expectRevert(InvalidToken.selector);
+        swap.swap(address(stableToken), address(randomToken), 100 ether, "");
+
+        vm.stopPrank();
     }
 
     function test_swap_fail_with_NotPool_stage_2() public {
         completePreHoldSwap();
+        whitelist.add(user);
+        startHoax(user);
 
         vm.expectRevert(NotPool.selector);
-        swap.swap(address(billyToken), address(stableToken), 100 ether);
+        swap.swap(address(billyToken), address(stableToken), 100 ether, "");
+
+        vm.stopPrank();
     }
 
     function test_swap_success_stage_2() public {
         completePreHoldSwap();
 
         pool.initiatePostHoldSwap();
+    }
+
+    function test_swap_fail_with_NotWhitelisted_stage_3() public {
+        completePreHoldSwap();
+        pool.initiatePostHoldSwap();
+
+        startHoax(user2);
+
+        vm.expectRevert(NotWhitelisted.selector);
+        swap.swap(address(randomToken), address(stableToken), 100 ether, "");
+
+        vm.stopPrank();
     }
 
     function test_swap_fail_with_InvalidToken_stage_3() public {
@@ -200,10 +249,10 @@ contract SwapFacilityTest is Test {
         startHoax(user);
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(randomToken), address(stableToken), 100 ether);
+        swap.swap(address(randomToken), address(stableToken), 100 ether, "");
 
         vm.expectRevert(InvalidToken.selector);
-        swap.swap(address(billyToken), address(randomToken), 100 ether);
+        swap.swap(address(billyToken), address(randomToken), 100 ether, "");
 
         vm.stopPrank();
     }
@@ -219,7 +268,7 @@ contract SwapFacilityTest is Test {
         uint256 beforeBalance = billyToken.balanceOf(user);
         vm.expectEmit(true, true, true, true, address(swap));
         emit Swap(address(stableToken), address(billyToken), 1001_500000, 10 ether, user);
-        swap.swap(address(stableToken), address(billyToken), 1001_500000);
+        swap.swap(address(stableToken), address(billyToken), 1001_500000, "");
 
         assertEq(billyToken.balanceOf(user), beforeBalance + 10 ether);
         assertEq(stableToken.balanceOf(address(pool)), 1001_500000);

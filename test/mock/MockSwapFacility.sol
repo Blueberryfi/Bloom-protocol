@@ -43,7 +43,7 @@ contract MockSwapFacility is ISwapFacility {
         ISwapRecipient(pswap.to).completeSwap(address(pswap.token), pswap.amount);
     }
 
-    function swap(address inToken, address outToken, uint256 inAmount) external {
+    function swap(address inToken, address outToken, uint256 inAmount, bytes calldata proof) external {
         if (
             !(
                 (inToken == address(token0) && outToken == address(token1))

@@ -4,9 +4,10 @@ pragma solidity 0.8.19;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {Owned} from "solmate/auth/Owned.sol";
-import "./interfaces/ISwapFacility.sol";
-import "./interfaces/ISwapRecipient.sol";
-import "./interfaces/IOracle.sol";
+import {IWhitelist} from "./interfaces/IWhitelist.sol";
+import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
+import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 /// @notice Swap Facility
 contract SwapFacility is ISwapFacility, Owned {
@@ -24,6 +25,9 @@ contract SwapFacility is ISwapFacility, Owned {
 
     /// @notice Price oracle for billy token
     address public immutable billyTokenOracle;
+
+    /// @notice Whitelist contract
+    address public immutable whitelist;
 
     /// @notice Spread price
     uint256 public spreadPrice;
@@ -59,6 +63,9 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Not Pool
     error NotPool();
 
+    /// @notice Not Whitelisted
+    error NotWhitelisted();
+
     // =================== Events ===================
 
     /// @notice Pool Updated Event
@@ -69,7 +76,10 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Spread Price Updated Event
     /// @param oldPrice Old spread price
     /// @param newPrice New spread price
-    event SpreadPriceUpdated(uint256 indexed oldPrice, uint256 indexed newPrice);
+    event SpreadPriceUpdated(
+        uint256 indexed oldPrice,
+        uint256 indexed newPrice
+    );
 
     /// @notice Swap Event
     /// @param inToken In token address
@@ -84,6 +94,19 @@ contract SwapFacility is ISwapFacility, Owned {
         address indexed user
     );
 
+    // =================== Modifiers ===================
+
+    modifier checkPool() {
+        if (pool == address(0)) revert PoolNotSet();
+        _;
+    }
+
+    modifier onlyWhitelisted(bytes memory proof) {
+        if (msg.sender != pool && !IWhitelist(whitelist).isWhitelisted(msg.sender, proof))
+            revert NotWhitelisted();
+        _;
+    }
+
     // =================== Functions ===================
 
     /// @notice SwapFacility Constructor
@@ -91,18 +114,21 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _billyToken Billy token address
     /// @param _underlyingTokenOracle Price oracle for underlying token
     /// @param _billyTokenOracle Price oracle for billy token
+    /// @param _whitelist Whitelist contract
     /// @param _spreadPrice Spread price
     constructor(
         address _underlyingToken,
         address _billyToken,
         address _underlyingTokenOracle,
         address _billyTokenOracle,
+        address _whitelist,
         uint256 _spreadPrice
     ) Owned(msg.sender) {
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
         billyTokenOracle = _billyTokenOracle;
+        whitelist = _whitelist;
         spreadPrice = _spreadPrice;
     }
 
@@ -127,13 +153,13 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _inToken In token address
     /// @param _outToken Out token address
     /// @param _inAmount In token amount
+    /// @param _whitelistProof Whitelist proof
     function swap(
         address _inToken,
         address _outToken,
-        uint256 _inAmount
-    ) external {
-        if (pool == address(0)) revert PoolNotSet();
-
+        uint256 _inAmount,
+        bytes calldata _whitelistProof
+    ) external checkPool onlyWhitelisted(_whitelistProof) {
         if (_stage == 0) {
             if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();

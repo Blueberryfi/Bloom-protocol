@@ -22,13 +22,13 @@ contract MockBillyPool {
     function initiatePreHoldSwap() external {
         uint256 amountToSwap = underlyingToken.balanceOf(address(this));
         underlyingToken.safeApprove(address(swap), amountToSwap);
-        swap.swap(underlyingToken, billToken, amountToSwap);
+        swap.swap(underlyingToken, billToken, amountToSwap, "");
     }
 
     function initiatePostHoldSwap() external {
         uint256 amountToSwap = billToken.balanceOf(address(this));
         billToken.safeApprove(address(swap), amountToSwap);
-        swap.swap(billToken, underlyingToken, amountToSwap);
+        swap.swap(billToken, underlyingToken, amountToSwap, "");
     }
 
     function completeSwap(address outToken, uint256 outAmount) external {}

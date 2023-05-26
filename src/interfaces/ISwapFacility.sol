@@ -3,5 +3,5 @@ pragma solidity ^0.8.0;
 
 /// @author philogy <https://github.com/philogy>
 interface ISwapFacility {
-    function swap(address inToken, address outToken, uint256 inAmount) external;
+    function swap(address inToken, address outToken, uint256 inAmount, bytes calldata proof) external;
 }
