@@ -25,6 +25,9 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Price oracle for billy token
     address public immutable billyTokenOracle;
 
+    /// @notice Spread price
+    uint256 public spreadPrice;
+
     /// @dev Pool address
     address public pool;
 
@@ -63,6 +66,11 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param newPool New pool address
     event PoolUpdated(address indexed oldPool, address indexed newPool);
 
+    /// @notice Spread Price Updated Event
+    /// @param oldPrice Old spread price
+    /// @param newPrice New spread price
+    event SpreadPriceUpdated(uint256 indexed oldPrice, uint256 indexed newPrice);
+
     /// @notice Swap Event
     /// @param inToken In token address
     /// @param outToken Out token address
@@ -83,16 +91,19 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _billyToken Billy token address
     /// @param _underlyingTokenOracle Price oracle for underlying token
     /// @param _billyTokenOracle Price oracle for billy token
+    /// @param _spreadPrice Spread price
     constructor(
         address _underlyingToken,
         address _billyToken,
         address _underlyingTokenOracle,
-        address _billyTokenOracle
+        address _billyTokenOracle,
+        uint256 _spreadPrice
     ) Owned(msg.sender) {
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
         billyTokenOracle = _billyTokenOracle;
+        spreadPrice = _spreadPrice;
     }
 
     /// @notice Set Pool Address
@@ -102,6 +113,14 @@ contract SwapFacility is ISwapFacility, Owned {
         address oldPool = pool;
         pool = _pool;
         emit PoolUpdated(oldPool, _pool);
+    }
+
+    /// @notice Set Spread Price
+    /// @param _spreadPrice New spread price
+    function setSpreadPrice(uint256 _spreadPrice) external onlyOwner {
+        uint256 oldSpreadPrice = spreadPrice;
+        spreadPrice = _spreadPrice;
+        emit SpreadPriceUpdated(oldSpreadPrice, _spreadPrice);
     }
 
     /// @notice Swap tokens UNDERLYING <-> BILLY
@@ -162,8 +181,8 @@ contract SwapFacility is ISwapFacility, Owned {
         ) = _getTokenPrices();
         (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken ==
             underlyingToken
-            ? (underlyingTokenPrice, billyTokenPrice)
-            : (billyTokenPrice, underlyingTokenPrice);
+            ? (underlyingTokenPrice, billyTokenPrice + spreadPrice)
+            : (billyTokenPrice - spreadPrice, underlyingTokenPrice);
         outAmount = (_inAmount * inTokenPrice) / outTokenPrice;
         if (_swapAmount < outAmount) {
             outAmount = _swapAmount;

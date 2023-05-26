@@ -57,7 +57,8 @@ contract SwapFacilityTest is Test {
             address(stableToken),
             address(billyToken),
             address(usdcOracle),
-            address(ib01Oracle)
+            address(ib01Oracle),
+            15000000
         );
         vm.label(address(swap), "SwapFacility");
 
@@ -83,10 +84,10 @@ contract SwapFacilityTest is Test {
     function completePreHoldSwap() public {
         initPreHoldSwap();
 
-        billyToken.mint(user, 100 ether);
+        billyToken.mint(user, 100.2 ether);
         startHoax(user);
-        billyToken.approve(address(swap), 100 ether);
-        swap.swap(address(billyToken), address(stableToken), 100 ether);
+        billyToken.approve(address(swap), 100.2 ether);
+        swap.swap(address(billyToken), address(stableToken), 100.2 ether);
         vm.stopPrank();
     }
 
@@ -149,10 +150,10 @@ contract SwapFacilityTest is Test {
         billyToken.approve(address(swap), 10 ether);
 
         vm.expectEmit(true, true, true, true, address(swap));
-        emit Swap(address(billyToken), address(stableToken), 10 ether, 1000_000000, user);
+        emit Swap(address(billyToken), address(stableToken), 10 ether, 998_500000, user);
         swap.swap(address(billyToken), address(stableToken), 10 ether);
 
-        assertEq(stableToken.balanceOf(user), 1000_000000);
+        assertEq(stableToken.balanceOf(user), 998_500000);
         assertEq(billyToken.balanceOf(address(pool)), 10 ether);
 
         vm.stopPrank();
@@ -201,15 +202,16 @@ contract SwapFacilityTest is Test {
         pool.initiatePostHoldSwap();
 
         startHoax(user);
-        stableToken.mint(user, 1000_000000);
-        stableToken.approve(address(swap), 1000_000000);
+        stableToken.mint(user, 1001_500000);
+        stableToken.approve(address(swap), 1001_500000);
 
+        uint256 beforeBalance = billyToken.balanceOf(user);
         vm.expectEmit(true, true, true, true, address(swap));
-        emit Swap(address(stableToken), address(billyToken), 1000_000000, 10 ether, user);
-        swap.swap(address(stableToken), address(billyToken), 1000_000000);
+        emit Swap(address(stableToken), address(billyToken), 1001_500000, 10 ether, user);
+        swap.swap(address(stableToken), address(billyToken), 1001_500000);
 
-        assertEq(billyToken.balanceOf(user), 10 ether);
-        assertEq(stableToken.balanceOf(address(pool)), 1000_000000);
+        assertEq(billyToken.balanceOf(user), beforeBalance + 10 ether);
+        assertEq(stableToken.balanceOf(address(pool)), 1001_500000);
 
         vm.stopPrank();
     }
