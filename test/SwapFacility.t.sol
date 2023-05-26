@@ -102,6 +102,17 @@ contract SwapFacilityTest is Test {
         assertEq(swap.pool(), address(pool));
     }
 
+    function test_setSpreadPrice_fail_with_UNAUTHORIZED() public {
+        vm.prank(user);
+        vm.expectRevert("UNAUTHORIZED");
+        swap.setSpreadPrice(20000000);
+    }
+
+    function test_setSpreadPrice() public {
+        swap.setSpreadPrice(20000000);
+        assertEq(swap.spreadPrice(), 20000000);
+    }
+
     function test_swap_fail_with_PoolNotSet() public {
         vm.expectRevert(PoolNotSet.selector);
         pool.initiatePreHoldSwap();
