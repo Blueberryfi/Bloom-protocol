@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";
+import {IMockSwapFacility} from "./interfaces/IMockSwapFacility.sol";
 
 import {MockERC20} from "./MockERC20.sol";
 import {ISwapRecipient} from "src/interfaces/ISwapRecipient.sol";
 
 /// @author philogy <https://github.com/philogy>
-contract MockSwapFacility is ISwapFacility {
+contract MockSwapFacility is IMockSwapFacility {
     uint256 internal constant WAD = 1e18;
 
     error MockSwapFacility_WrongTokens(address inToken, address outToken, address token0, address token1);

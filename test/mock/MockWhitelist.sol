@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {IWhitelist} from "src/interfaces/IWhitelist.sol";
+import {IMockWhitelist} from "./interfaces/IMockWhitelist.sol";
 
 /// @author philogy <https://github.com/philogy>
-contract MockWhitelist is IWhitelist {
+contract MockWhitelist is IMockWhitelist {
     mapping(address => bool) public includes;
 
     function add(address member) external {
