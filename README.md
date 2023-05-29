@@ -82,10 +82,9 @@ it will not allow all parties to be fully paid out.
 
 ### Whitelist
 
-Whitelists can implement any validation logic but must conform to the [`IWhitelist`](src/interfaces/IWhitelist.sol)
+Whitelists uses Merkle proofs for validation logic and conforms to the [`IWhitelist`](src/interfaces/IWhitelist.sol)
 interface. The aribtrary length `proof` bytes argument can be used to relay any added context
-outside of the members address to the whitelist contract such as signatures or merkle proofs. You
-can find example whitelist implementations in the [examples folder](src/examples).
+outside of the members address to the whitelist contract merkle proofs. 
 
 
 ## The [`BillyPoolFactory`](src/BillyPoolFactory.sol) Contract

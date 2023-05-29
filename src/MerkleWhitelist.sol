@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {Owned} from "solmate/auth/Owned.sol";
-import {IWhitelist} from "../interfaces/IWhitelist.sol";
+import {IWhitelist} from "./interfaces/IWhitelist.sol";
 
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
