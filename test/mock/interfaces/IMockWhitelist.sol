@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 /// @author philogy <https://github.com/philogy>
-interface IWhitelist {
-
-    function setRoot(bytes32 newRoot) external;
-
+interface IMockWhitelist {
+    
     function isWhitelisted(address member, bytes calldata proof) external returns (bool);
 }

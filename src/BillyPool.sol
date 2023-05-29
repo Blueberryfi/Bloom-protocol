@@ -154,7 +154,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         uint256 amountToSwap = totalMatchAmount() * (LEVERAGE_BPS + BPS) / LEVERAGE_BPS;
         UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         emit ExplictStateTransition(State.ReadyPreHoldSwap, setState = State.PendingPreHoldSwap);
-        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap);
+        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, "");
     }
 
     /**
@@ -165,7 +165,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         BILL_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         setState = State.PendingPostHoldSwap;
         emit ExplictStateTransition(State.ReadyPostHoldSwap, setState = State.PendingPostHoldSwap);
-        ISwapFacility(SWAP_FACILITY).swap(BILL_TOKEN, UNDERLYING_TOKEN, amountToSwap);
+        ISwapFacility(SWAP_FACILITY).swap(BILL_TOKEN, UNDERLYING_TOKEN, amountToSwap, "");
     }
 
     /**
