@@ -37,11 +37,14 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     address public immutable BILL_TOKEN;
     address public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
+    address public immutable TREASURY;
     uint256 public immutable LEVERAGE_BPS;
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
     uint256 public immutable POOL_PHASE_END;
     uint256 public immutable LENDER_RETURN_BPS;
+    uint256 public immutable LENDER_RETURN_FEE;
+    uint256 public immutable BORROWER_RETURN_FEE;
 
     // =================== Storage ===================
 
@@ -76,12 +79,15 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         BILL_TOKEN = initParams.billToken;
         WHITELIST = initParams.whitelist;
         SWAP_FACILITY = initParams.swapFacility;
+        TREASURY = initParams.treasury;
         LEVERAGE_BPS = initParams.leverageBps;
         // Ensure minimum minimum is `1` to prevent `0` deposits.
         MIN_BORROW_DEPOSIT = Math.max(initParams.minBorrowDeposit, 1);
         COMMIT_PHASE_END = block.timestamp + initParams.commitPhaseDuration;
         POOL_PHASE_END = block.timestamp + initParams.commitPhaseDuration + initParams.poolPhaseDuration;
         LENDER_RETURN_BPS = initParams.lenderReturnBps;
+        LENDER_RETURN_FEE = initParams.lenderReturnFee;
+        BORROWER_RETURN_FEE = initParams.borrowerReturnFee;
     }
 
     // =============== Deposit Methods ===============
@@ -185,13 +191,18 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
             uint256 lenderReturn = Math.min(totalMatchAmount() * LENDER_RETURN_BPS / BPS, outAmount);
             uint256 borrowerReturn = outAmount - lenderReturn;
 
+            uint256 lenderReturnFee = lenderReturn * LENDER_RETURN_FEE / BPS;
+            uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
+
             uint256 totalMatched = totalMatchAmount();
 
-            borrowerDistribution = borrowerReturn.toUint128();
+            borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();
 
-            lenderDistribution = lenderReturn.toUint128();
+            lenderDistribution = (lenderReturn - lenderReturnFee).toUint128();
             totalLenderShares = uint256(totalMatched).toUint128();
+
+            UNDERLYING_TOKEN.safeTransfer(TREASURY, lenderReturnFee + borrowerReturnFee);
 
             emit ExplictStateTransition(State.PendingPostHoldSwap, setState = State.FinalWithdraw);
             return;

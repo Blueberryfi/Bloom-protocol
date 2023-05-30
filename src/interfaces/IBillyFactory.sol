@@ -22,6 +22,8 @@ interface IBillyFactory {
         uint256 commitPhaseDuration,
         uint256 poolPhaseDuration,
         uint256 lenderRateBps,
+        uint256 lenderReturnFee,
+        uint256 borrowerReturnFee,
         string memory name,
         string memory symbol
     ) external returns (address pool);

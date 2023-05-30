@@ -24,6 +24,7 @@ contract BillyPoolFactory is IBillyFactory, OwnedValueStore {
     bytes32 internal constant DEFAULT_UNDERLYING_KEY = "store.defaultUnderyling";
     bytes32 internal constant DEFAULT_WHITELIST_KEY = "store.defaultWhitelist";
     bytes32 internal constant DEFAULT_SWAP_FACILITY_KEY = "store.defaultSwapFacility";
+    bytes32 internal constant DEFAULT_TREASURY_KEY = "store.defaultTreasury";
     bytes32 internal constant DEFAULT_LEVERAGE_KEY = "store.defaultLeverage";
     bytes32 internal constant DEFAULT_MIN_BORROW_KEY = "store.defaultMinimumBorrow";
     uint256 internal constant BPS = 1e4;
@@ -35,6 +36,8 @@ contract BillyPoolFactory is IBillyFactory, OwnedValueStore {
         uint256 commitPhaseDuration,
         uint256 poolPhaseDuration,
         uint256 lenderReturnBps,
+        uint256 lenderReturnFee,
+        uint256 borrowerReturnFee,
         string memory name,
         string memory symbol
     ) external returns (address) {
@@ -47,11 +50,14 @@ contract BillyPoolFactory is IBillyFactory, OwnedValueStore {
                 billToken: billToken,
                 whitelist: getAddr(DEFAULT_WHITELIST_KEY),
                 swapFacility: getAddr(DEFAULT_SWAP_FACILITY_KEY),
+                treasury: getAddr(DEFAULT_TREASURY_KEY),
                 leverageBps: getUint(DEFAULT_LEVERAGE_KEY),
                 minBorrowDeposit: getUint(DEFAULT_MIN_BORROW_KEY),
                 commitPhaseDuration: commitPhaseDuration,
                 poolPhaseDuration: poolPhaseDuration,
                 lenderReturnBps: lenderReturnBps,
+                lenderReturnFee: lenderReturnFee,
+                borrowerReturnFee: borrowerReturnFee,
                 name: name,
                 symbol: symbol
             })
