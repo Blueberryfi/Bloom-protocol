@@ -21,6 +21,7 @@ import {CommitmentsLib, Commitments, AssetCommitment} from "./lib/CommitmentsLib
 
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
+import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
 
 /// @author Blueberry protocol (philogy <https://github.com/philogy>)
 contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
@@ -38,11 +39,11 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     address public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
     address public immutable TREASURY;
+    address public immutable LENDER_RETURN_BPS_FEED;
     uint256 public immutable LEVERAGE_BPS;
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
     uint256 public immutable POOL_PHASE_END;
-    uint256 public immutable LENDER_RETURN_BPS;
     uint256 public immutable LENDER_RETURN_FEE;
     uint256 public immutable BORROWER_RETURN_FEE;
 
@@ -80,12 +81,12 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         WHITELIST = initParams.whitelist;
         SWAP_FACILITY = initParams.swapFacility;
         TREASURY = initParams.treasury;
+        LENDER_RETURN_BPS_FEED = initParams.lenderReturnBpsFeed;
         LEVERAGE_BPS = initParams.leverageBps;
         // Ensure minimum minimum is `1` to prevent `0` deposits.
         MIN_BORROW_DEPOSIT = Math.max(initParams.minBorrowDeposit, 1);
         COMMIT_PHASE_END = block.timestamp + initParams.commitPhaseDuration;
         POOL_PHASE_END = block.timestamp + initParams.commitPhaseDuration + initParams.poolPhaseDuration;
-        LENDER_RETURN_BPS = initParams.lenderReturnBps;
         LENDER_RETURN_FEE = initParams.lenderReturnFee;
         BORROWER_RETURN_FEE = initParams.borrowerReturnFee;
     }
@@ -188,7 +189,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         if (currentState == State.PendingPostHoldSwap) {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 lenderReturn = Math.min(totalMatchAmount() * LENDER_RETURN_BPS / BPS, outAmount);
+            uint256 lenderReturn = Math.min(totalMatchAmount() * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() / BPS, outAmount);
             uint256 borrowerReturn = outAmount - lenderReturn;
 
             uint256 lenderReturnFee = lenderReturn * LENDER_RETURN_FEE / BPS;

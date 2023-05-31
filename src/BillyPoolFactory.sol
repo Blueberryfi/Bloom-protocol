@@ -11,6 +11,7 @@
 pragma solidity 0.8.19;
 
 import {IBillyFactory} from "./interfaces/IBillyFactory.sol";
+import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
 import {OwnedValueStore} from "./base/OwnedValueStore.sol";
 
 import {BillyPool, BillyPoolInitParams} from "./BillyPool.sol";
@@ -35,14 +36,14 @@ contract BillyPoolFactory is IBillyFactory, OwnedValueStore {
         address billToken,
         uint256 commitPhaseDuration,
         uint256 poolPhaseDuration,
-        uint256 lenderReturnBps,
+        address lenderReturnBpsFeed,
         uint256 lenderReturnFee,
         uint256 borrowerReturnFee,
         string memory name,
         string memory symbol
     ) external returns (address) {
         // Ensure that interest >0%. Use `rawCreate` if negative rate required.
-        if (lenderReturnBps <= BPS) revert NonPositiveRate();
+        if (IBPSFeed(lenderReturnBpsFeed).getWeightedRate() <= BPS) revert NonPositiveRate();
 
         return rawCreate(
             BillyPoolInitParams({
@@ -51,11 +52,11 @@ contract BillyPoolFactory is IBillyFactory, OwnedValueStore {
                 whitelist: getAddr(DEFAULT_WHITELIST_KEY),
                 swapFacility: getAddr(DEFAULT_SWAP_FACILITY_KEY),
                 treasury: getAddr(DEFAULT_TREASURY_KEY),
+                lenderReturnBpsFeed: lenderReturnBpsFeed,
                 leverageBps: getUint(DEFAULT_LEVERAGE_KEY),
                 minBorrowDeposit: getUint(DEFAULT_MIN_BORROW_KEY),
                 commitPhaseDuration: commitPhaseDuration,
                 poolPhaseDuration: poolPhaseDuration,
-                lenderReturnBps: lenderReturnBps,
                 lenderReturnFee: lenderReturnFee,
                 borrowerReturnFee: borrowerReturnFee,
                 name: name,

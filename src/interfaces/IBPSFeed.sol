@@ -7,26 +7,11 @@
 ██████╔╝███████╗╚██████╔╝███████╗██████╔╝███████╗██║  ██║██║  ██║   ██║
 ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
 */
-pragma solidity 0.8.19;
 
-import {BillyPoolInitParams} from "./IBillyPool.sol";
+pragma solidity ^0.8.0;
 
-/// @author philogy <https://github.com/philogy>
-interface IBillyFactory {
-    error ZeroAddress();
+interface IBPSFeed {
+    function getWeightedRate() external view returns (uint256);
 
-    event PoolCreated(address indexed pool);
-
-    function createWithDefaults(
-        address billToken,
-        uint256 commitPhaseDuration,
-        uint256 poolPhaseDuration,
-        address lenderRateBpsFeed,
-        uint256 lenderReturnFee,
-        uint256 borrowerReturnFee,
-        string memory name,
-        string memory symbol
-    ) external returns (address pool);
-
-    function rawCreate(BillyPoolInitParams memory poolParams) external returns (address pool);
+    function getCurrentRate() external view returns (uint256);
 }

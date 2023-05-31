@@ -18,11 +18,11 @@ struct BillyPoolInitParams {
     address whitelist;
     address swapFacility;
     address treasury;
+    address lenderReturnBpsFeed;
     uint256 leverageBps;
     uint256 minBorrowDeposit;
     uint256 commitPhaseDuration;
     uint256 poolPhaseDuration;
-    uint256 lenderReturnBps;
     uint256 lenderReturnFee;
     uint256 borrowerReturnFee;
     string name;
@@ -123,11 +123,11 @@ interface IBillyPool {
     function WHITELIST() external view returns (address);
     function SWAP_FACILITY() external view returns (address);
     function TREASURY() external view returns (address);
+    function LENDER_RETURN_BPS_FEED() external view returns (address);
     function LEVERAGE_BPS() external view returns (uint256);
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
     function COMMIT_PHASE_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
-    function LENDER_RETURN_BPS() external view returns (uint256);
     function LENDER_RETURN_FEE() external view returns (uint256);
     function BORROWER_RETURN_FEE() external view returns (uint256);
 

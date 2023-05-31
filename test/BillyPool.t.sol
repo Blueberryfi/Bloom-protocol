@@ -14,10 +14,11 @@ import {Test} from "forge-std/Test.sol";
 
 import {BillyPool, BillyPoolInitParams, State, AssetCommitment} from "src/BillyPool.sol";
 import {IBillyPool} from "src/interfaces/IBillyPool.sol";
+import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
-import "forge-std/console.sol";
+import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 
 /// @author philogy <https://github.com/philogy>
 contract BillyPoolTest is Test {
@@ -28,6 +29,7 @@ contract BillyPoolTest is Test {
     MockWhitelist internal whitelist;
     MockSwapFacility internal swap;
     address internal treasury = makeAddr("treasury");
+    MockBPSFeed internal feed;
 
     uint256 internal commitPhaseDuration;
     uint256 internal poolPhaseDuration;
@@ -55,6 +57,9 @@ contract BillyPoolTest is Test {
         vm.label(address(billyToken), "BillyToken");
         whitelist = new MockWhitelist();
         swap = new MockSwapFacility(stableToken, billyToken);
+        feed = new MockBPSFeed();
+
+        feed.setRate(BPS + 30);
 
         BillyPoolInitParams memory initParams = BillyPoolInitParams({
             underlyingToken: address(stableToken),
@@ -66,7 +71,7 @@ contract BillyPoolTest is Test {
             minBorrowDeposit: 100.0e18,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             poolPhaseDuration: poolPhaseDuration = 30 days,
-            lenderReturnBps: BPS + 30, // 3%
+            lenderReturnBpsFeed: address(feed),
             lenderReturnFee: 1000,
             borrowerReturnFee: 3000,
             name: "US 1 Month T-Bill 2023-03-29",
@@ -346,7 +351,7 @@ contract BillyPoolTest is Test {
             assertEq(borrowerShares, borrowAmount);
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
-            lenderReceived = lenderAmount * pool.LENDER_RETURN_BPS() / BPS;
+            lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / BPS;
             borrowerReceived  = totalAmount - lenderReceived;
             uint256 lenderFee = lenderReceived * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
