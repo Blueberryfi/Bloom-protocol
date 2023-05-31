@@ -83,7 +83,9 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
             uint256 commitPhaseDuration,
             uint256 poolPhaseDuration,
             uint256 lenderReturnFee,
-            uint256 borrowerReturnFee
+            uint256 borrowerReturnFee,
+            string memory name,
+            string memory symbol,
         )
         ERC20(name, symbol, ERC20(underlyingToken).decimals())
     {
