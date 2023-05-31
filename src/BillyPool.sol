@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {IBillyPool, BillyPoolInitParams, State} from "./interfaces/IBillyPool.sol";
+import {IBillyPool, State} from "./interfaces/IBillyPool.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -71,27 +71,39 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
         _;
     }
-
-    constructor(BillyPoolInitParams memory initParams)
-        ERC20(initParams.name, initParams.name, ERC20(initParams.underlyingToken).decimals())
+        constructor(
+            address underlyingToken,
+            address billToken,
+            address whitelist,
+            address swapFacility,
+            address treasury,
+            address lenderReturnBpsFeed,
+            uint256 leverageBps,
+            uint256 minBorrowDeposit,
+            uint256 commitPhaseDuration,
+            uint256 poolPhaseDuration,
+            uint256 lenderReturnFee,
+            uint256 borrowerReturnFee
+        )
+        ERC20(name, symbol, ERC20(underlyingToken).decimals())
     {
-        if (initParams.underlyingToken == address(0) || initParams.billToken == address(0)) revert ZeroAddress();
+        if (underlyingToken == address(0) || billToken == address(0)) revert ZeroAddress();
 
-        UNDERLYING_TOKEN = initParams.underlyingToken;
-        BILL_TOKEN = initParams.billToken;
-        WHITELIST = initParams.whitelist;
-        SWAP_FACILITY = initParams.swapFacility;
-        TREASURY = initParams.treasury;
-        LENDER_RETURN_BPS_FEED = initParams.lenderReturnBpsFeed;
-        LEVERAGE_BPS = initParams.leverageBps;
-        // Ensure minimum minimum is `1` to prevent `0` deposits.
-        MIN_BORROW_DEPOSIT = Math.max(initParams.minBorrowDeposit, 1);
-        COMMIT_PHASE_END = block.timestamp + initParams.commitPhaseDuration;
-        POOL_PHASE_END = block.timestamp + initParams.commitPhaseDuration + initParams.poolPhaseDuration;
-        POOL_PHASE_DURATION = initParams.poolPhaseDuration;
-        LENDER_RETURN_FEE = initParams.lenderReturnFee;
-        BORROWER_RETURN_FEE = initParams.borrowerReturnFee;
-    }
+        UNDERLYING_TOKEN = underlyingToken;
+        BILL_TOKEN = billToken;
+        WHITELIST = whitelist;
+        SWAP_FACILITY = swapFacility;
+        TREASURY = treasury;
+        LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
+        LEVERAGE_BPS = leverageBps;
+        // Ensure minimum is `1` to prevent `0` deposits.
+        MIN_BORROW_DEPOSIT = minBorrowDeposit;
+        COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
+        POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;
+        POOL_PHASE_DURATION = poolPhaseDuration;
+        LENDER_RETURN_FEE = lenderReturnFee;
+        BORROWER_RETURN_FEE = borrowerReturnFee;
+    }    
 
     // =============== Deposit Methods ===============
 

@@ -12,23 +12,6 @@ pragma solidity 0.8.19;
 
 import {AssetCommitment} from "../lib/CommitmentsLib.sol";
 
-struct BillyPoolInitParams {
-    address underlyingToken;
-    address billToken;
-    address whitelist;
-    address swapFacility;
-    address treasury;
-    address lenderReturnBpsFeed;
-    uint256 leverageBps;
-    uint256 minBorrowDeposit;
-    uint256 commitPhaseDuration;
-    uint256 poolPhaseDuration;
-    uint256 lenderReturnFee;
-    uint256 borrowerReturnFee;
-    string name;
-    string symbol;
-}
-
 enum State {
     Other,
     Commit,
@@ -44,8 +27,6 @@ enum State {
 interface IBillyPool {
     // Initialization errors
     error ZeroAddress();
-    error NoLenderBorrowerSpread();
-    error PhaseTooShort();
 
     error NotSwapFacility();
     error InvalidOutToken(address outToken);
