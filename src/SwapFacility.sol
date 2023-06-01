@@ -18,7 +18,7 @@ import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 
-/// @notice Swap Facility
+/// @author Blueberry protocol
 contract SwapFacility is ISwapFacility, Owned {
     using SafeTransferLib for ERC20;
     // =================== Storage ===================

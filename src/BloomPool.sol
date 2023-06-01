@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {IBillyPool, State} from "./interfaces/IBillyPool.sol";
+import {IBloomPool, State} from "./interfaces/IBloomPool.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -24,7 +24,7 @@ import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
 
 /// @author Blueberry protocol
-contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
+contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     using CommitmentsLib for Commitments;
     using CommitmentsLib for AssetCommitment;
     using SafeTransferLib for address;
@@ -108,7 +108,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     // =============== Deposit Methods ===============
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function depositBorrower(uint256 amount, bytes32[] calldata proof)
         external
@@ -124,7 +124,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     }
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function depositLender(uint256 amount) external onlyState(State.Commit) returns (uint256 newId) {
         if (amount == 0) revert CommitTooSmall();
@@ -137,7 +137,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     // =========== Further Deposit Methods ===========
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function processBorrowerCommit(uint256 id) external onlyAfterState(State.Commit) {
         AssetCommitment storage commitment = borrowers.commitments[id];
@@ -152,7 +152,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     }
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function processLenderCommit(uint256 id) external onlyAfterState(State.Commit) {
         AssetCommitment storage commitment = lenders.commitments[id];
@@ -169,7 +169,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     // ======== Swap State Management Methods ========
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function initiatePreHoldSwap() external onlyState(State.ReadyPreHoldSwap) {
         uint256 amountToSwap = totalMatchAmount() * (LEVERAGE_BPS + BPS) / LEVERAGE_BPS;
@@ -179,7 +179,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     }
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function initiatePostHoldSwap() external onlyState(State.ReadyPostHoldSwap) {
         uint256 amountToSwap = ERC20(BILL_TOKEN).balanceOf(address(this));
@@ -228,7 +228,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     // =========== Final Withdraw Methods ============
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function withdrawBorrower(uint256 id) external onlyState(State.FinalWithdraw) {
         AssetCommitment storage commitment = borrowers.commitments[id];
@@ -247,7 +247,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     }
 
     /**
-     * @inheritdoc IBillyPool
+     * @inheritdoc IBloomPool
      */
     function withdrawLender(uint256 shares) external onlyState(State.FinalWithdraw) {
         _burn(msg.sender, shares);

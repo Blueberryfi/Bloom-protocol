@@ -12,8 +12,8 @@ pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {BillyPool, State, AssetCommitment} from "src/BillyPool.sol";
-import {IBillyPool} from "src/interfaces/IBillyPool.sol";
+import {BloomPool, State, AssetCommitment} from "src/BloomPool.sol";
+import {IBloomPool} from "src/interfaces/IBloomPool.sol";
 import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
@@ -22,8 +22,8 @@ import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 
 /// @author Blueberry protocol
-contract BillyPoolTest is Test {
-    BillyPool internal pool;
+contract BloomPoolTest is Test {
+    BloomPool internal pool;
 
     MockERC20 internal stableToken;
     MockERC20 internal billyToken;
@@ -63,7 +63,7 @@ contract BillyPoolTest is Test {
 
         feed.setRate((BPS + 30) * 12);
 
-        pool = new BillyPool({
+        pool = new BloomPool({
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
             whitelist: IWhitelist(address(whitelist)),
@@ -101,7 +101,7 @@ contract BillyPoolTest is Test {
         stableToken.mint(user, amount);
         vm.startPrank(user);
         stableToken.approve(address(pool), amount);
-        vm.expectRevert(IBillyPool.NotWhitelisted.selector);
+        vm.expectRevert(IBloomPool.NotWhitelisted.selector);
         pool.depositBorrower(amount, new bytes32[](0));
         vm.stopPrank();
     }
@@ -182,7 +182,7 @@ contract BillyPoolTest is Test {
         assertEq(pool.balanceOf(user), lenderAmount);
 
         // Check that commit cannot be re-processed.
-        vm.expectRevert(IBillyPool.NoCommitToProcess.selector);
+        vm.expectRevert(IBloomPool.NoCommitToProcess.selector);
         pool.processLenderCommit(id);
     }
 
@@ -210,7 +210,7 @@ contract BillyPoolTest is Test {
         assertEq(commitment.cumulativeAmountEnd, 0);
         assertEq(commitment.commitedAmount, borrowerAmount);
 
-        vm.expectRevert(IBillyPool.NoCommitToProcess.selector);
+        vm.expectRevert(IBloomPool.NoCommitToProcess.selector);
         pool.processBorrowerCommit(id);
     }
 
@@ -274,9 +274,9 @@ contract BillyPoolTest is Test {
             assertEq(stableToken.balanceOf(lender), lenderAmount - allocatedLenderAmount);
         }
 
-        vm.expectRevert(IBillyPool.NoCommitToProcess.selector);
+        vm.expectRevert(IBloomPool.NoCommitToProcess.selector);
         pool.processLenderCommit(id);
-        vm.expectRevert(IBillyPool.NoCommitToProcess.selector);
+        vm.expectRevert(IBloomPool.NoCommitToProcess.selector);
         pool.processBorrowerCommit(id);
     }
 
@@ -302,7 +302,7 @@ contract BillyPoolTest is Test {
             pool.depositLender(unusedLendAmount);
             vm.stopPrank();
             vm.prank(otherUser);
-            vm.expectRevert(abi.encodeWithSelector(IBillyPool.InvalidState.selector, (State.Commit)));
+            vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.Commit)));
             pool.withdrawLender(unusedLendAmount);
         }
 
@@ -407,7 +407,7 @@ contract BillyPoolTest is Test {
         stableToken.mint(user1, amount1);
         vm.startPrank(user1);
         stableToken.approve(address(pool), type(uint256).max);
-        vm.expectRevert(abi.encodeWithSelector(IBillyPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
+        vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
         pool.depositLender(amount1);
         vm.stopPrank();
 
@@ -416,7 +416,7 @@ contract BillyPoolTest is Test {
         stableToken.mint(user2, amount2);
         vm.startPrank(user2);
         stableToken.approve(address(pool), type(uint256).max);
-        vm.expectRevert(abi.encodeWithSelector(IBillyPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
+        vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
         pool.depositBorrower(amount2, new bytes32[](0));
         vm.stopPrank();
     }

@@ -17,12 +17,12 @@ import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";
 import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
-import {MockBillyPool} from "./mock/MockBillyPool.sol";
+import {MockBloomPool} from "./mock/MockBloomPool.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
 
 contract SwapFacilityTest is Test {
     SwapFacility internal swap;
-    MockBillyPool internal pool;
+    MockBloomPool internal pool;
 
     MockERC20 internal stableToken;
     MockERC20 internal billyToken;
@@ -80,12 +80,12 @@ contract SwapFacilityTest is Test {
         assertEq(swap.underlyingTokenOracle(), address(usdcOracle));
         assertEq(swap.billyTokenOracle(), address(ib01Oracle));
 
-        pool = new MockBillyPool(
+        pool = new MockBloomPool(
             address(stableToken),
             address(billyToken),
             address(swap)
         );
-        vm.label(address(pool), "MockBillyPool");
+        vm.label(address(pool), "MockBloomPool");
     }
 
     function initPreHoldSwap() public {

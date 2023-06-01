@@ -14,7 +14,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";
 import {MockERC20} from "./MockERC20.sol";
 
-contract MockBillyPool {
+contract MockBloomPool {
     using SafeTransferLib for address;
 
     address public immutable underlyingToken;

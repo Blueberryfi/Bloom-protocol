@@ -25,7 +25,7 @@ enum State {
 }
 
 /// @author Blueberry protocol
-interface IBillyPool {
+interface IBloomPool {
     // Initialization errors
     error ZeroAddress();
 

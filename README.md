@@ -1,12 +1,9 @@
-# The Billy Pool Protocol
+# The Bloom Pool Protocol
+By Blueberry Protocol
 
-> The name "Billy" comes from T-Bills because idk, "billy" sounds funny? Name is WIP, change at your
-> discretion.
+## The [`BloomPool`](src/BloomPool.sol) Contract
 
-
-## The [`BillyPool`](src/BillyPool.sol) Contract
-
-The BillyPool smart contract enables lenders and borrowers to deposit stablecoins and swap them for
+The BloomPool smart contract enables lenders and borrowers to deposit stablecoins and swap them for
 tokenized treasuries. Borrowers need to be whitelisted and earn a spread compared to lenders.
 Borrowers are also the first in line to carry losses or gains from swapping to and from tokenized treasuries.
 
