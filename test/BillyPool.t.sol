@@ -12,7 +12,7 @@ pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {BillyPool, BillyPoolInitParams, State, AssetCommitment} from "src/BillyPool.sol";
+import {BillyPool, State, AssetCommitment} from "src/BillyPool.sol";
 import {IBillyPool} from "src/interfaces/IBillyPool.sol";
 import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
@@ -35,6 +35,7 @@ contract BillyPoolTest is Test {
     uint256 internal poolPhaseDuration;
 
     uint256 internal constant BPS = 1e4;
+
 
     // ============== Redefined Events ===============
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
@@ -61,7 +62,7 @@ contract BillyPoolTest is Test {
 
         feed.setRate((BPS + 30) * 12);
 
-        BillyPoolInitParams memory initParams = BillyPoolInitParams({
+        pool = new BillyPool({
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
             whitelist: address(whitelist),
@@ -77,7 +78,6 @@ contract BillyPoolTest is Test {
             name: "US 1 Month T-Bill 2023-03-29",
             symbol: "BILLY-2303"
         });
-        pool = new BillyPool(initParams);
     }
 
     function testDefaultState() public {

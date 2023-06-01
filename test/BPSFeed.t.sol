@@ -94,6 +94,7 @@ contract BPSFeedTest is Test {
         feed.updateRate(rate1);
         uint256 lastTimestamp = block.timestamp;
         assertEq(feed.getLastTimestamp(), lastTimestamp);
+        lastTimestamp = feed.getLastTimestamp();
 
         skip(duration1);
         assertEq(feed.getLastTimestamp(), lastTimestamp);
@@ -101,6 +102,7 @@ contract BPSFeedTest is Test {
         feed.updateRate(rate2);
         lastTimestamp = block.timestamp;
         assertEq(feed.getLastTimestamp(), lastTimestamp);
+        lastTimestamp = feed.getLastTimestamp();
 
         skip(duration2);
         assertEq(feed.getLastTimestamp(), lastTimestamp);
