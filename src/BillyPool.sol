@@ -71,22 +71,22 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
         _;
     }
-        constructor(
-            address underlyingToken,
-            address billToken,
-            address whitelist,
-            address swapFacility,
-            address treasury,
-            address lenderReturnBpsFeed,
-            uint256 leverageBps,
-            uint256 minBorrowDeposit,
-            uint256 commitPhaseDuration,
-            uint256 poolPhaseDuration,
-            uint256 lenderReturnFee,
-            uint256 borrowerReturnFee,
-            string memory name,
-            string memory symbol,
-        )
+    constructor(
+        address underlyingToken,
+        address billToken,
+        address whitelist,
+        address swapFacility,
+        address treasury,
+        address lenderReturnBpsFeed,
+        uint256 leverageBps,
+        uint256 minBorrowDeposit,
+        uint256 commitPhaseDuration,
+        uint256 poolPhaseDuration,
+        uint256 lenderReturnFee,
+        uint256 borrowerReturnFee,
+        string memory name,
+        string memory symbol
+    )
         ERC20(name, symbol, ERC20(underlyingToken).decimals())
     {
         if (underlyingToken == address(0) || billToken == address(0)) revert ZeroAddress();
