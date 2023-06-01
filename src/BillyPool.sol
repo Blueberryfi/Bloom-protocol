@@ -89,7 +89,6 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     )
         ERC20(name, symbol, ERC20(underlyingToken).decimals())
     {
-        if (underlyingToken == address(0) || billToken == address(0)) revert ZeroAddress();
 
         UNDERLYING_TOKEN = underlyingToken;
         BILL_TOKEN = billToken;
@@ -98,7 +97,6 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         TREASURY = treasury;
         LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
         LEVERAGE_BPS = leverageBps;
-        // Ensure minimum is `1` to prevent `0` deposits.
         MIN_BORROW_DEPOSIT = minBorrowDeposit;
         COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
         POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;

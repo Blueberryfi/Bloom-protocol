@@ -105,12 +105,7 @@ contract SwapFacility is ISwapFacility, Owned {
 
     // =================== Modifiers ===================
 
-    modifier checkPool() {
-        if (pool == address(0)) revert PoolNotSet();
-        _;
-    }
-
-    modifier onlyWhitelisted(bytes memory proof) {
+    modifier onlyWhitelisted(bytes calldata proof) {
         if (msg.sender != pool && !IWhitelist(whitelist).isWhitelisted(msg.sender, proof))
             revert NotWhitelisted();
         _;
@@ -144,7 +139,6 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Set Pool Address
     /// @param _pool New pool address
     function setPool(address _pool) external onlyOwner {
-        if (_pool == address(0)) revert InvalidAddress();
         address oldPool = pool;
         pool = _pool;
         emit PoolUpdated(oldPool, _pool);
@@ -168,7 +162,7 @@ contract SwapFacility is ISwapFacility, Owned {
         address _outToken,
         uint256 _inAmount,
         bytes calldata _whitelistProof
-    ) external checkPool onlyWhitelisted(_whitelistProof) {
+    ) external onlyWhitelisted(_whitelistProof) {
         if (_stage == 0) {
             if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();
