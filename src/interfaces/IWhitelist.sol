@@ -15,5 +15,5 @@ interface IWhitelist {
 
     function setRoot(bytes32 newRoot) external;
 
-    function isWhitelisted(address member, bytes calldata proof) external returns (bool);
+    function isWhitelisted(address member, bytes32[] calldata proof) external returns (bool);
 }

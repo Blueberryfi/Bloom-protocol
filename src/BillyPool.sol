@@ -36,7 +36,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
 
     address public immutable UNDERLYING_TOKEN;
     address public immutable BILL_TOKEN;
-    address public immutable WHITELIST;
+    IWhitelist public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
     address public immutable TREASURY;
     address public immutable LENDER_RETURN_BPS_FEED;
@@ -74,7 +74,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     constructor(
         address underlyingToken,
         address billToken,
-        address whitelist,
+        IWhitelist whitelist,
         address swapFacility,
         address treasury,
         address lenderReturnBpsFeed,
@@ -110,13 +110,13 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     /**
      * @inheritdoc IBillyPool
      */
-    function depositBorrower(uint256 amount, bytes calldata whitelistProof)
+    function depositBorrower(uint256 amount, bytes32[] calldata proof)
         external
         onlyState(State.Commit)
         returns (uint256 newId)
     {
         if (amount < MIN_BORROW_DEPOSIT) revert CommitTooSmall();
-        if (!IWhitelist(WHITELIST).isWhitelisted(msg.sender, whitelistProof)) revert NotWhitelisted();
+        if (!IWhitelist(WHITELIST).isWhitelisted(msg.sender, proof)) revert NotWhitelisted();
         UNDERLYING_TOKEN.safeTransferFrom(msg.sender, address(this), amount);
         uint256 cumulativeAmountEnd;
         (newId, cumulativeAmountEnd) = borrowers.add(msg.sender, amount);
@@ -175,7 +175,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         uint256 amountToSwap = totalMatchAmount() * (LEVERAGE_BPS + BPS) / LEVERAGE_BPS;
         UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         emit ExplictStateTransition(State.ReadyPreHoldSwap, setState = State.PendingPreHoldSwap);
-        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, "");
+        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, new bytes32[](0));
     }
 
     /**
@@ -186,7 +186,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         BILL_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         setState = State.PendingPostHoldSwap;
         emit ExplictStateTransition(State.ReadyPostHoldSwap, setState = State.PendingPostHoldSwap);
-        ISwapFacility(SWAP_FACILITY).swap(BILL_TOKEN, UNDERLYING_TOKEN, amountToSwap, "");
+        ISwapFacility(SWAP_FACILITY).swap(BILL_TOKEN, UNDERLYING_TOKEN, amountToSwap, new bytes32[](0));
     }
 
     /**

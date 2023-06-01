@@ -30,8 +30,7 @@ contract MerkleWhitelist is IWhitelist, Owned {
         emit NewWhitelistRoot(whitelistMerkleRoot = newRoot);
     }
 
-    function isWhitelisted(address member, bytes calldata data) external view returns (bool) {
-        bytes32[] memory proof = abi.decode(data, (bytes32[]));
+    function isWhitelisted(address member, bytes32[] calldata proof) external view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(member));
         return MerkleProofLib.verify(proof, whitelistMerkleRoot, leaf);
     }

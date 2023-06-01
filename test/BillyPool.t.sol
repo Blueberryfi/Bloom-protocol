@@ -14,6 +14,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {BillyPool, State, AssetCommitment} from "src/BillyPool.sol";
 import {IBillyPool} from "src/interfaces/IBillyPool.sol";
+import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
@@ -65,7 +66,7 @@ contract BillyPoolTest is Test {
         pool = new BillyPool({
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
-            whitelist: address(whitelist),
+            whitelist: IWhitelist(address(whitelist)),
             swapFacility: address(swap),
             treasury: treasury,
             leverageBps: 4 * BPS,
@@ -101,7 +102,7 @@ contract BillyPoolTest is Test {
         vm.startPrank(user);
         stableToken.approve(address(pool), amount);
         vm.expectRevert(IBillyPool.NotWhitelisted.selector);
-        pool.depositBorrower(amount, "");
+        pool.depositBorrower(amount, new bytes32[](0));
         vm.stopPrank();
     }
 
@@ -116,7 +117,7 @@ contract BillyPoolTest is Test {
         stableToken.approve(address(pool), amount);
         vm.expectEmit(true, true, true, true);
         emit BorrowerCommit(user, expectedId, amount, amount);
-        pool.depositBorrower(amount, "");
+        pool.depositBorrower(amount, new bytes32[](0));
         vm.stopPrank();
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(expectedId);
@@ -165,7 +166,7 @@ contract BillyPoolTest is Test {
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
         whitelist.add(user);
-        pool.depositBorrower(borrowerAmount, new bytes(0));
+        pool.depositBorrower(borrowerAmount, new bytes32[](0));
         pool.depositLender(lenderAmount);
         vm.stopPrank();
         vm.warp(pool.COMMIT_PHASE_END());
@@ -196,7 +197,7 @@ contract BillyPoolTest is Test {
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
         whitelist.add(user);
-        pool.depositBorrower(borrowerAmount, new bytes(0));
+        pool.depositBorrower(borrowerAmount, new bytes32[](0));
         pool.depositLender(lenderAmount);
         vm.stopPrank();
         vm.warp(pool.COMMIT_PHASE_END());
@@ -226,7 +227,7 @@ contract BillyPoolTest is Test {
         vm.startPrank(borrower);
         stableToken.approve(address(pool), type(uint256).max);
         whitelist.add(borrower);
-        pool.depositBorrower(borrowerAmount, new bytes(0));
+        pool.depositBorrower(borrowerAmount, new bytes32[](0));
         vm.stopPrank();
 
         stableToken.mint(lender, lenderAmount);
@@ -288,7 +289,7 @@ contract BillyPoolTest is Test {
         stableToken.mint(user, total);
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
-        pool.depositBorrower(borrowAmount, new bytes(0));
+        pool.depositBorrower(borrowAmount, new bytes32[](0));
         pool.depositLender(lenderAmount);
         vm.stopPrank();
 
@@ -416,7 +417,7 @@ contract BillyPoolTest is Test {
         vm.startPrank(user2);
         stableToken.approve(address(pool), type(uint256).max);
         vm.expectRevert(abi.encodeWithSelector(IBillyPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
-        pool.depositBorrower(amount2, new bytes(0));
+        pool.depositBorrower(amount2, new bytes32[](0));
         vm.stopPrank();
     }
 

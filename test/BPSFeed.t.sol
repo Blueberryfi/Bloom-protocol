@@ -67,45 +67,45 @@ contract BPSFeedTest is Test {
     }
 
     function testGetCurrentRate() public {
-        assertEq(feed.getCurrentRate(), 0);
+        assertEq(feed.currentRate(), 0);
 
         vm.startPrank(owner);
 
         feed.updateRate(rate1);
-        assertEq(feed.getCurrentRate(), rate1);
+        assertEq(feed.currentRate(), rate1);
 
         skip(duration1);
-        assertEq(feed.getCurrentRate(), rate1);
+        assertEq(feed.currentRate(), rate1);
 
         feed.updateRate(rate2);
-        assertEq(feed.getCurrentRate(), rate2);
+        assertEq(feed.currentRate(), rate2);
 
         skip(duration2);
-        assertEq(feed.getCurrentRate(), rate2);
+        assertEq(feed.currentRate(), rate2);
 
         vm.stopPrank();
     }
 
     function testGetLastTimestamp() public {
-        assertEq(feed.getLastTimestamp(), 0);
+        assertEq(feed.lastTimestamp(), 0);
 
         vm.startPrank(owner);
 
         feed.updateRate(rate1);
         uint256 lastTimestamp = block.timestamp;
-        assertEq(feed.getLastTimestamp(), lastTimestamp);
-        lastTimestamp = feed.getLastTimestamp();
+        assertEq(feed.lastTimestamp(), lastTimestamp);
+        lastTimestamp = feed.lastTimestamp();
 
         skip(duration1);
-        assertEq(feed.getLastTimestamp(), lastTimestamp);
+        assertEq(feed.lastTimestamp(), lastTimestamp);
 
         feed.updateRate(rate2);
         lastTimestamp = block.timestamp;
-        assertEq(feed.getLastTimestamp(), lastTimestamp);
-        lastTimestamp = feed.getLastTimestamp();
+        assertEq(feed.lastTimestamp(), lastTimestamp);
+        lastTimestamp = feed.lastTimestamp();
 
         skip(duration2);
-        assertEq(feed.getLastTimestamp(), lastTimestamp);
+        assertEq(feed.lastTimestamp(), lastTimestamp);
 
         vm.stopPrank();
     }

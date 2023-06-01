@@ -10,6 +10,8 @@
 
 pragma solidity 0.8.19;
 
+import {IWhitelist} from "../interfaces/IWhitelist.sol";
+
 /// @author philogy <https://github.com/philogy>
 interface ISwapFacility {
 
@@ -28,7 +30,7 @@ interface ISwapFacility {
     function billyTokenOracle() external view returns (address);
 
     /// @notice Get Whitelist contract
-    function whitelist() external view returns (address);
+    function whitelist() external view returns (IWhitelist);
 
     /// @notice Get Spread price
     function spreadPrice() external view returns (uint256);
@@ -43,5 +45,5 @@ interface ISwapFacility {
     function setSpreadPrice(uint256 _spreadPrice) external;
 
     /// @notice swap tokens Underlying <-> Billy    
-    function swap(address inToken, address outToken, uint256 inAmount, bytes calldata proof) external;
+    function swap(address inToken, address outToken, uint256 inAmount, bytes32[] calldata proof) external;
 }

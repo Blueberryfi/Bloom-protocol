@@ -24,7 +24,7 @@ contract MockWhitelist is IMockWhitelist {
         includes[member] = false;
     }
 
-    function isWhitelisted(address member, bytes calldata) external view returns (bool) {
+    function isWhitelisted(address member, bytes32[] calldata) external view returns (bool) {
         return includes[member];
     }
 }
