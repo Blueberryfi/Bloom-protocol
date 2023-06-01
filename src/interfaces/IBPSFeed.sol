@@ -15,10 +15,10 @@ interface IBPSFeed {
     function getWeightedRate() external view returns (uint256);
 
     /// @notice Returns current rate
-    function getCurrentRate() external view returns (uint256);
+    function currentRate() external view returns (uint256);
 
     /// @notice Returns last timestamp the rate was set
-    function getLastTimestamp() external view returns (uint256);
+    function lastTimestamp() external view returns (uint256);
 
     /// @notice Sets new rate
     /// @param rate New rate

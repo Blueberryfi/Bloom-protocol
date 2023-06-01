@@ -11,6 +11,7 @@
 pragma solidity 0.8.19;
 
 import {AssetCommitment} from "../lib/CommitmentsLib.sol";
+import {IWhitelist} from "../interfaces/IWhitelist.sol";
 
 enum State {
     Other,
@@ -62,10 +63,10 @@ interface IBillyPool {
      * @notice Deposits funds from the borrower committing them for the duration of the commit
      * phase.
      * @param amount The amount of tokens to deposit.
-     * @param whitelistProof The whitelist proof data, format dependent on implementation.
+     * @param proof The whitelist proof data, format dependent on implementation.
      * @return newCommitmentId The commitment ID for the borrower's new deposit.
      */
-    function depositBorrower(uint256 amount, bytes calldata whitelistProof)
+    function depositBorrower(uint256 amount, bytes32[] calldata proof)
         external
         returns (uint256 newCommitmentId);
     /**
@@ -101,7 +102,7 @@ interface IBillyPool {
 
     function UNDERLYING_TOKEN() external view returns (address);
     function BILL_TOKEN() external view returns (address);
-    function WHITELIST() external view returns (address);
+    function WHITELIST() external view returns (IWhitelist);
     function SWAP_FACILITY() external view returns (address);
     function TREASURY() external view returns (address);
     function LENDER_RETURN_BPS_FEED() external view returns (address);

@@ -36,7 +36,7 @@ contract SwapFacility is ISwapFacility, Owned {
     address public immutable billyTokenOracle;
 
     /// @notice Whitelist contract
-    address public immutable whitelist;
+    IWhitelist public immutable whitelist;
 
     /// @notice Spread price
     uint256 public spreadPrice;
@@ -105,7 +105,7 @@ contract SwapFacility is ISwapFacility, Owned {
 
     // =================== Modifiers ===================
 
-    modifier onlyWhitelisted(bytes calldata proof) {
+    modifier onlyWhitelisted(bytes32[] calldata proof) {
         if (msg.sender != pool && !IWhitelist(whitelist).isWhitelisted(msg.sender, proof))
             revert NotWhitelisted();
         _;
@@ -125,7 +125,7 @@ contract SwapFacility is ISwapFacility, Owned {
         address _billyToken,
         address _underlyingTokenOracle,
         address _billyTokenOracle,
-        address _whitelist,
+        IWhitelist _whitelist,
         uint256 _spreadPrice
     ) Owned(msg.sender) {
         underlyingToken = _underlyingToken;
@@ -156,13 +156,13 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _inToken In token address
     /// @param _outToken Out token address
     /// @param _inAmount In token amount
-    /// @param _whitelistProof Whitelist proof
+    /// @param _proof Whitelist proof
     function swap(
         address _inToken,
         address _outToken,
         uint256 _inAmount,
-        bytes calldata _whitelistProof
-    ) external onlyWhitelisted(_whitelistProof) {
+        bytes32[] calldata _proof
+    ) external onlyWhitelisted(_proof) {
         if (_stage == 0) {
             if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();
