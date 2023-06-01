@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {IBillyPool, BillyPoolInitParams, State} from "./interfaces/IBillyPool.sol";
+import {IBillyPool, State} from "./interfaces/IBillyPool.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -21,6 +21,7 @@ import {CommitmentsLib, Commitments, AssetCommitment} from "./lib/CommitmentsLib
 
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
+import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
 
 /// @author Blueberry protocol (philogy <https://github.com/philogy>)
 contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
@@ -37,11 +38,15 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     address public immutable BILL_TOKEN;
     address public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
+    address public immutable TREASURY;
+    address public immutable LENDER_RETURN_BPS_FEED;
     uint256 public immutable LEVERAGE_BPS;
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
     uint256 public immutable POOL_PHASE_END;
-    uint256 public immutable LENDER_RETURN_BPS;
+    uint256 public immutable POOL_PHASE_DURATION;
+    uint256 public immutable LENDER_RETURN_FEE;
+    uint256 public immutable BORROWER_RETURN_FEE;
 
     // =================== Storage ===================
 
@@ -66,23 +71,41 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
         _;
     }
-
-    constructor(BillyPoolInitParams memory initParams)
-        ERC20(initParams.name, initParams.name, ERC20(initParams.underlyingToken).decimals())
+    constructor(
+        address underlyingToken,
+        address billToken,
+        address whitelist,
+        address swapFacility,
+        address treasury,
+        address lenderReturnBpsFeed,
+        uint256 leverageBps,
+        uint256 minBorrowDeposit,
+        uint256 commitPhaseDuration,
+        uint256 poolPhaseDuration,
+        uint256 lenderReturnFee,
+        uint256 borrowerReturnFee,
+        string memory name,
+        string memory symbol
+    )
+        ERC20(name, symbol, ERC20(underlyingToken).decimals())
     {
-        if (initParams.underlyingToken == address(0) || initParams.billToken == address(0)) revert ZeroAddress();
+        if (underlyingToken == address(0) || billToken == address(0)) revert ZeroAddress();
 
-        UNDERLYING_TOKEN = initParams.underlyingToken;
-        BILL_TOKEN = initParams.billToken;
-        WHITELIST = initParams.whitelist;
-        SWAP_FACILITY = initParams.swapFacility;
-        LEVERAGE_BPS = initParams.leverageBps;
-        // Ensure minimum minimum is `1` to prevent `0` deposits.
-        MIN_BORROW_DEPOSIT = Math.max(initParams.minBorrowDeposit, 1);
-        COMMIT_PHASE_END = block.timestamp + initParams.commitPhaseDuration;
-        POOL_PHASE_END = block.timestamp + initParams.commitPhaseDuration + initParams.poolPhaseDuration;
-        LENDER_RETURN_BPS = initParams.lenderReturnBps;
-    }
+        UNDERLYING_TOKEN = underlyingToken;
+        BILL_TOKEN = billToken;
+        WHITELIST = whitelist;
+        SWAP_FACILITY = swapFacility;
+        TREASURY = treasury;
+        LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
+        LEVERAGE_BPS = leverageBps;
+        // Ensure minimum is `1` to prevent `0` deposits.
+        MIN_BORROW_DEPOSIT = minBorrowDeposit;
+        COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
+        POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;
+        POOL_PHASE_DURATION = poolPhaseDuration;
+        LENDER_RETURN_FEE = lenderReturnFee;
+        BORROWER_RETURN_FEE = borrowerReturnFee;
+    }    
 
     // =============== Deposit Methods ===============
 
@@ -181,17 +204,22 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         }
         if (currentState == State.PendingPostHoldSwap) {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
-            // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 lenderReturn = Math.min(totalMatchAmount() * LENDER_RETURN_BPS / BPS, outAmount);
-            uint256 borrowerReturn = outAmount - lenderReturn;
-
             uint256 totalMatched = totalMatchAmount();
 
-            borrowerDistribution = borrowerReturn.toUint128();
+            // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
+            uint256 lenderReturn = Math.min(totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS, outAmount);
+            uint256 borrowerReturn = outAmount - lenderReturn;
+
+            uint256 lenderReturnFee = (lenderReturn - totalMatched)  * LENDER_RETURN_FEE / BPS;
+            uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
+
+            borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();
 
-            lenderDistribution = lenderReturn.toUint128();
+            lenderDistribution = (lenderReturn - lenderReturnFee).toUint128();
             totalLenderShares = uint256(totalMatched).toUint128();
+
+            UNDERLYING_TOKEN.safeTransfer(TREASURY, lenderReturnFee + borrowerReturnFee);
 
             emit ExplictStateTransition(State.PendingPostHoldSwap, setState = State.FinalWithdraw);
             return;

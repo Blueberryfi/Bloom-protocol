@@ -12,11 +12,13 @@ pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
-import {BillyPool, BillyPoolInitParams, State, AssetCommitment} from "src/BillyPool.sol";
+import {BillyPool, State, AssetCommitment} from "src/BillyPool.sol";
 import {IBillyPool} from "src/interfaces/IBillyPool.sol";
+import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
+import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 
 /// @author philogy <https://github.com/philogy>
 contract BillyPoolTest is Test {
@@ -26,11 +28,14 @@ contract BillyPoolTest is Test {
     MockERC20 internal billyToken;
     MockWhitelist internal whitelist;
     MockSwapFacility internal swap;
+    address internal treasury = makeAddr("treasury");
+    MockBPSFeed internal feed;
 
     uint256 internal commitPhaseDuration;
     uint256 internal poolPhaseDuration;
 
     uint256 internal constant BPS = 1e4;
+
 
     // ============== Redefined Events ===============
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
@@ -53,21 +58,26 @@ contract BillyPoolTest is Test {
         vm.label(address(billyToken), "BillyToken");
         whitelist = new MockWhitelist();
         swap = new MockSwapFacility(stableToken, billyToken);
+        feed = new MockBPSFeed();
 
-        BillyPoolInitParams memory initParams = BillyPoolInitParams({
+        feed.setRate((BPS + 30) * 12);
+
+        pool = new BillyPool({
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
             whitelist: address(whitelist),
             swapFacility: address(swap),
+            treasury: treasury,
             leverageBps: 4 * BPS,
             minBorrowDeposit: 100.0e18,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             poolPhaseDuration: poolPhaseDuration = 30 days,
-            lenderReturnBps: BPS + 30, // 3%
+            lenderReturnBpsFeed: address(feed),
+            lenderReturnFee: 1000,
+            borrowerReturnFee: 3000,
             name: "US 1 Month T-Bill 2023-03-29",
             symbol: "BILLY-2303"
         });
-        pool = new BillyPool(initParams);
     }
 
     function testDefaultState() public {
@@ -333,6 +343,7 @@ contract BillyPoolTest is Test {
         assertEq(pool.state(), State.FinalWithdraw);
 
         uint256 lenderReceived;
+        uint256 borrowerReceived;
         uint256 totalAmount;
         {
             (uint256 borrowerDist, uint256 borrowerShares, uint256 lenderDist, uint256 lenderShares) =
@@ -340,9 +351,18 @@ contract BillyPoolTest is Test {
             assertEq(borrowerShares, borrowAmount);
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
-            lenderReceived = lenderAmount * pool.LENDER_RETURN_BPS() / BPS;
+            lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / 12 / BPS;
+            borrowerReceived  = totalAmount - lenderReceived;
+            uint256 totalMatchAmount = pool.totalMatchAmount();
+            uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
+            uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
+            lenderReceived -= lenderFee;
+            borrowerReceived -= borrowerFee;
+            totalAmount = lenderReceived + borrowerReceived;
             assertEq(lenderDist, lenderReceived);
-            assertEq(borrowerDist, totalAmount - lenderReceived);
+            assertEq(borrowerDist, borrowerReceived);
+
+            assertEq(stableToken.balanceOf(treasury), lenderFee + borrowerFee);
         }
 
         vm.startPrank(user);
@@ -365,7 +385,7 @@ contract BillyPoolTest is Test {
 
         uint256 borrowId = 0;
         vm.expectEmit(true, true, true, true);
-        emit BorrowerWithdraw(user, borrowId, totalAmount - lenderReceived);
+        emit BorrowerWithdraw(user, borrowId, borrowerReceived);
         pool.withdrawBorrower(borrowId);
         assertEq(stableToken.balanceOf(user), totalAmount);
 

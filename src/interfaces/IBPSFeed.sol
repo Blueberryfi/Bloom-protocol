@@ -8,15 +8,19 @@
 ╚═════╝ ╚══════╝ ╚═════╝ ╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
-/// @author philogy <https://github.com/philogy>
-library QuickTypeLib {
-    function toAddr(uint256 x) internal pure returns (address) {
-        return address(uint160(x));
-    }
+interface IBPSFeed {
+    /// @notice Returns weighted rate
+    function getWeightedRate() external view returns (uint256);
 
-    function toUint(address x) internal pure returns (uint256) {
-        return uint256(uint160(x));
-    }
+    /// @notice Returns current rate
+    function getCurrentRate() external view returns (uint256);
+
+    /// @notice Returns last timestamp the rate was set
+    function getLastTimestamp() external view returns (uint256);
+
+    /// @notice Sets new rate
+    /// @param rate New rate
+    function updateRate(uint256 rate) external;
 }
