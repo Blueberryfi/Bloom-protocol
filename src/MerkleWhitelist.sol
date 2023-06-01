@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -15,7 +15,7 @@ import {IWhitelist} from "./interfaces/IWhitelist.sol";
 
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 contract MerkleWhitelist is IWhitelist, Owned {
     event NewWhitelistRoot(bytes32 newRoot);
 

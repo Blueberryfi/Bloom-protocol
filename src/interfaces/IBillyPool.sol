@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -24,7 +24,7 @@ enum State {
     FinalWithdraw
 }
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 interface IBillyPool {
     // Initialization errors
     error ZeroAddress();

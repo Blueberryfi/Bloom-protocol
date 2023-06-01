@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -24,7 +24,7 @@ struct Commitments {
     uint192 totalAssetsCommited;
 }
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 library CommitmentsLib {
     using SafeCastLib for uint256;
 

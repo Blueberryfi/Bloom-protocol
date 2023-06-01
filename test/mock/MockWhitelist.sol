@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -12,7 +12,7 @@ pragma solidity 0.8.19;
 
 import {IMockWhitelist} from "./interfaces/IMockWhitelist.sol";
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 contract MockWhitelist is IMockWhitelist {
     mapping(address => bool) public includes;
 

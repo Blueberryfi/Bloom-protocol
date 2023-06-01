@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -21,7 +21,7 @@ import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 contract BillyPoolTest is Test {
     BillyPool internal pool;
 
@@ -76,8 +76,8 @@ contract BillyPoolTest is Test {
             lenderReturnBpsFeed: address(feed),
             lenderReturnFee: 1000,
             borrowerReturnFee: 3000,
-            name: "US 1 Month T-Bill 2023-03-29",
-            symbol: "BILLY-2303"
+            name: "Term Bound Token 6 month 2023-06-1",
+            symbol: "TBT-1"
         });
     }
 

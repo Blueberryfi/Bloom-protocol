@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -23,7 +23,7 @@ import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
 
-/// @author Blueberry protocol (philogy <https://github.com/philogy>)
+/// @author Blueberry protocol
 contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     using CommitmentsLib for Commitments;
     using CommitmentsLib for AssetCommitment;

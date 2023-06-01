@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -15,7 +15,7 @@ import {IMockSwapFacility} from "./interfaces/IMockSwapFacility.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {ISwapRecipient} from "src/interfaces/ISwapRecipient.sol";
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 contract MockSwapFacility is IMockSwapFacility {
     uint256 internal constant WAD = 1e18;
 

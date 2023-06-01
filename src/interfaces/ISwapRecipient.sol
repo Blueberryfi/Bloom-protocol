@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -10,7 +10,7 @@
 
 pragma solidity ^0.8.0;
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 interface ISwapRecipient {
     /**
      * @notice Callback that is invoked by a swap facility when a trade is completed.

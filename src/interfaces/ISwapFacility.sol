@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 /*
 ██████╗ ██╗     ██╗   ██╗███████╗██████╗ ███████╗██████╗ ██████╗ ██╗   ██╗
 ██╔══██╗██║     ██║   ██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝
@@ -12,7 +12,7 @@ pragma solidity 0.8.19;
 
 import {IWhitelist} from "../interfaces/IWhitelist.sol";
 
-/// @author philogy <https://github.com/philogy>
+/// @author Blueberry protocol
 interface ISwapFacility {
 
     // =================== Functions ===================
