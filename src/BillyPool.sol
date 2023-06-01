@@ -44,6 +44,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
     uint256 public immutable POOL_PHASE_END;
+    uint256 public immutable POOL_PHASE_DURATION;
     uint256 public immutable LENDER_RETURN_FEE;
     uint256 public immutable BORROWER_RETURN_FEE;
 
@@ -87,6 +88,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         MIN_BORROW_DEPOSIT = Math.max(initParams.minBorrowDeposit, 1);
         COMMIT_PHASE_END = block.timestamp + initParams.commitPhaseDuration;
         POOL_PHASE_END = block.timestamp + initParams.commitPhaseDuration + initParams.poolPhaseDuration;
+        POOL_PHASE_DURATION = initParams.poolPhaseDuration;
         LENDER_RETURN_FEE = initParams.lenderReturnFee;
         BORROWER_RETURN_FEE = initParams.borrowerReturnFee;
     }
@@ -189,7 +191,7 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         if (currentState == State.PendingPostHoldSwap) {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 lenderReturn = Math.min(totalMatchAmount() * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() / BPS, outAmount);
+            uint256 lenderReturn = Math.min(totalMatchAmount() * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS, outAmount);
             uint256 borrowerReturn = outAmount - lenderReturn;
 
             uint256 lenderReturnFee = lenderReturn * LENDER_RETURN_FEE / BPS;

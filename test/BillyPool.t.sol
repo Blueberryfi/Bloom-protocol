@@ -59,7 +59,7 @@ contract BillyPoolTest is Test {
         swap = new MockSwapFacility(stableToken, billyToken);
         feed = new MockBPSFeed();
 
-        feed.setRate(BPS + 30);
+        feed.setRate((BPS + 30) * 12);
 
         BillyPoolInitParams memory initParams = BillyPoolInitParams({
             underlyingToken: address(stableToken),
@@ -351,7 +351,7 @@ contract BillyPoolTest is Test {
             assertEq(borrowerShares, borrowAmount);
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
-            lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / BPS;
+            lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / 12 / BPS;
             borrowerReceived  = totalAmount - lenderReceived;
             uint256 lenderFee = lenderReceived * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;

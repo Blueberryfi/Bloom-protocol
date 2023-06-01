@@ -128,6 +128,7 @@ interface IBillyPool {
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
     function COMMIT_PHASE_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
+    function POOL_PHASE_DURATION() external view returns (uint256);
     function LENDER_RETURN_FEE() external view returns (uint256);
     function BORROWER_RETURN_FEE() external view returns (uint256);
 
