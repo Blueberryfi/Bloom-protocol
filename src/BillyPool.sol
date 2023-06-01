@@ -190,14 +190,14 @@ contract BillyPool is IBillyPool, ISwapRecipient, ERC20 {
         }
         if (currentState == State.PendingPostHoldSwap) {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
+            uint256 totalMatched = totalMatchAmount();
+
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 lenderReturn = Math.min(totalMatchAmount() * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS, outAmount);
+            uint256 lenderReturn = Math.min(totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS, outAmount);
             uint256 borrowerReturn = outAmount - lenderReturn;
 
-            uint256 lenderReturnFee = lenderReturn * LENDER_RETURN_FEE / BPS;
+            uint256 lenderReturnFee = (lenderReturn - totalMatched)  * LENDER_RETURN_FEE / BPS;
             uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
-
-            uint256 totalMatched = totalMatchAmount();
 
             borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();

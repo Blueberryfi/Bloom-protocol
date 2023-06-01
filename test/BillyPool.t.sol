@@ -353,7 +353,8 @@ contract BillyPoolTest is Test {
             totalAmount = billsReceived * billPrice / 1e18;
             lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / 12 / BPS;
             borrowerReceived  = totalAmount - lenderReceived;
-            uint256 lenderFee = lenderReceived * pool.LENDER_RETURN_FEE() / BPS;
+            uint256 totalMatchAmount = pool.totalMatchAmount();
+            uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
             lenderReceived -= lenderFee;
             borrowerReceived -= borrowerFee;
