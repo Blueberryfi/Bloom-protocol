@@ -132,9 +132,18 @@ contract SwapFacility is ISwapFacility, Owned {
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
-        underlyingScale = 10 ** IOracle(_underlyingTokenOracle).decimals();
+
+        // Get token and oracle decimals to see the scale required to balance out.
+        uint256 underlyingExp = IOracle(_underlyingTokenOracle).decimals() + ERC20(_underlyingToken).decimals();
+        uint256 billyExp = IOracle(_billyTokenOracle).decimals() + ERC20(_billyToken).decimals();
+        // The two `{...}Exp` variables represent the zeros in the scale values, can cancel out
+        // early to minimize overflows:
+        (underlyingExp, billyExp) =
+            underlyingExp > billyExp ? (underlyingExp - billyExp, uint256(0)) : (uint256(0), billyExp - underlyingExp);
+
+        underlyingScale = 10 ** underlyingExp;
         billyTokenOracle = _billyTokenOracle;
-        billyScale = 10 ** IOracle(_billyTokenOracle).decimals();
+        billyScale = 10 ** billyExp;
         whitelist = _whitelist;
         spread = _spread;
         pool = _pool;
