@@ -32,9 +32,11 @@ contract SwapFacility is ISwapFacility, Owned {
 
     /// @notice Price oracle for underlying token
     address public immutable underlyingTokenOracle;
+    uint256 public immutable underlyingScale;
 
     /// @notice Price oracle for billy token
     address public immutable billyTokenOracle;
+    uint256 public immutable billyScale;
 
     /// @notice Whitelist contract
     IWhitelist public immutable whitelist;
@@ -130,7 +132,9 @@ contract SwapFacility is ISwapFacility, Owned {
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
+        underlyingScale = 10 ** IOracle(_underlyingTokenOracle).decimals();
         billyTokenOracle = _billyTokenOracle;
+        billyScale = 10 ** IOracle(_billyTokenOracle).decimals();
         whitelist = _whitelist;
         spread = _spread;
         pool = _pool;
@@ -213,7 +217,8 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
     function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
-        underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * 1e12;
-        billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer());
+        // Scaled with each other's decimals so they cancel out when calculating `x * priceA / priceB`.
+        underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * billyScale;
+        billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer()) * underlyingScale;
     }
 }
