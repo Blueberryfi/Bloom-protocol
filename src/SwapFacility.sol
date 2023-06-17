@@ -44,6 +44,8 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Pool address
     address public pool;
 
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
+
     /// @dev Current swap stage
     /// 0: Not started
     /// 1: Underlying -> Billy swap initiated
@@ -74,6 +76,9 @@ contract SwapFacility is ISwapFacility, Owned {
 
     /// @notice Not Whitelisted
     error NotWhitelisted();
+
+    error OracleAnswerNegative();
+    error OracleStale();
 
     // =================== Events ===================
 
@@ -220,7 +225,14 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
     function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
-        underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * 1e12;
-        billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer());
+        underlyingTokenPrice = _readOracle(underlyingTokenOracle) * 1e12;
+        billyTokenPrice = _readOracle(billyTokenOracle);
+    }
+
+    function _readOracle(address _oracle) internal view returns (uint256) {
+        (, int256 answer,, uint256 updatedAt,) = IOracle(_oracle).latestRoundData();
+        if (answer < 0) revert OracleAnswerNegative();
+        if (block.timestamp - updatedAt >= ORACLE_STALE_THRESHOLD) revert OracleStale();
+        return uint256(answer);
     }
 }
