@@ -66,9 +66,7 @@ interface IBloomPool {
      * @param proof The whitelist proof data, format dependent on implementation.
      * @return newCommitmentId The commitment ID for the borrower's new deposit.
      */
-    function depositBorrower(uint256 amount, bytes32[] calldata proof)
-        external
-        returns (uint256 newCommitmentId);
+    function depositBorrower(uint256 amount, bytes32[] calldata proof) external returns (uint256 newCommitmentId);
     /**
      * @notice Deposits funds from the lender committing them for the duration of the commit phase.
      * @param amount The amount of stablecoins to deposit.

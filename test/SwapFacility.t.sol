@@ -42,13 +42,7 @@ contract SwapFacilityTest is Test {
 
     // ============== Redefined Events ===============
     event PoolUpdated(address indexed oldPool, address indexed newPool);
-    event Swap(
-        address inToken,
-        address outToken,
-        uint256 inAmount,
-        uint256 outAmount,
-        address indexed user
-    );
+    event Swap(address inToken, address outToken, uint256 inAmount, uint256 outAmount, address indexed user);
 
     function setUp() public {
         stableToken = new MockERC20();

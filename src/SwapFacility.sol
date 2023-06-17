@@ -85,29 +85,21 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Spread Price Updated Event
     /// @param oldPrice Old spread price
     /// @param newPrice New spread price
-    event SpreadPriceUpdated(
-        uint256 indexed oldPrice,
-        uint256 indexed newPrice
-    );
+    event SpreadPriceUpdated(uint256 indexed oldPrice, uint256 indexed newPrice);
 
     /// @notice Swap Event
     /// @param inToken In token address
     /// @param outToken Out token address
     /// @param inAmount In token amount
     /// @param user To address
-    event Swap(
-        address inToken,
-        address outToken,
-        uint256 inAmount,
-        uint256 outAmount,
-        address indexed user
-    );
+    event Swap(address inToken, address outToken, uint256 inAmount, uint256 outAmount, address indexed user);
 
     // =================== Modifiers ===================
 
     modifier onlyWhitelisted(bytes32[] calldata proof) {
-        if (msg.sender != pool && !IWhitelist(whitelist).isWhitelisted(msg.sender, proof))
+        if (msg.sender != pool && !IWhitelist(whitelist).isWhitelisted(msg.sender, proof)) {
             revert NotWhitelisted();
+        }
         _;
     }
 
@@ -157,12 +149,10 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _outToken Out token address
     /// @param _inAmount In token amount
     /// @param _proof Whitelist proof
-    function swap(
-        address _inToken,
-        address _outToken,
-        uint256 _inAmount,
-        bytes32[] calldata _proof
-    ) external onlyWhitelisted(_proof) {
+    function swap(address _inToken, address _outToken, uint256 _inAmount, bytes32[] calldata _proof)
+        external
+        onlyWhitelisted(_proof)
+    {
         if (_stage == 0) {
             if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();
@@ -183,8 +173,9 @@ contract SwapFacility is ISwapFacility, Owned {
             _stage = 3;
             _swapAmount = _inAmount;
         } else if (_stage == 3) {
-            if (_inToken != underlyingToken || _outToken != billyToken)
+            if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();
+            }
             _swap(_inToken, _outToken, _inAmount, msg.sender);
         }
     }
@@ -198,18 +189,12 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _outToken Out token address
     /// @param _inAmount In token amount
     /// @param _to To address
-    function _swap(
-        address _inToken,
-        address _outToken,
-        uint256 _inAmount,
-        address _to
-    ) internal returns (uint256 outAmount) {
-        (
-            uint256 underlyingTokenPrice,
-            uint256 billyTokenPrice
-        ) = _getTokenPrices();
-        (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken ==
-            underlyingToken
+    function _swap(address _inToken, address _outToken, uint256 _inAmount, address _to)
+        internal
+        returns (uint256 outAmount)
+    {
+        (uint256 underlyingTokenPrice, uint256 billyTokenPrice) = _getTokenPrices();
+        (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken == underlyingToken
             ? (underlyingTokenPrice, billyTokenPrice + spreadPrice)
             : (billyTokenPrice - spreadPrice, underlyingTokenPrice);
         outAmount = (_inAmount * inTokenPrice) / outTokenPrice;
@@ -234,14 +219,8 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Get prices of underlying and billy tokens
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
-    function _getTokenPrices()
-        internal
-        view
-        returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice)
-    {
-        underlyingTokenPrice =
-            uint256(IOracle(underlyingTokenOracle).latestAnswer()) *
-            1e12;
+    function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
+        underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * 1e12;
         billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer());
     }
 }

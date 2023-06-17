@@ -12,6 +12,5 @@ pragma solidity ^0.8.0;
 
 /// @author Blueberry protocol
 interface IMockWhitelist {
-    
     function isWhitelisted(address member, bytes32[] calldata proof) external returns (bool);
 }

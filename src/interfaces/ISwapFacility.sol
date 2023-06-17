@@ -14,7 +14,6 @@ import {IWhitelist} from "../interfaces/IWhitelist.sol";
 
 /// @author Blueberry protocol
 interface ISwapFacility {
-
     // =================== Functions ===================
 
     /// @notice Get Underlying token
@@ -44,6 +43,6 @@ interface ISwapFacility {
     /// @notice Set Spread Price
     function setSpreadPrice(uint256 _spreadPrice) external;
 
-    /// @notice swap tokens Underlying <-> Billy    
+    /// @notice swap tokens Underlying <-> Billy
     function swap(address inToken, address outToken, uint256 inAmount, bytes32[] calldata proof) external;
 }

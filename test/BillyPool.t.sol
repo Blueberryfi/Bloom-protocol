@@ -37,7 +37,6 @@ contract BloomPoolTest is Test {
 
     uint256 internal constant BPS = 1e4;
 
-
     // ============== Redefined Events ===============
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
     event LenderCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
@@ -353,7 +352,7 @@ contract BloomPoolTest is Test {
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
             lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / 12 / BPS;
-            borrowerReceived  = totalAmount - lenderReceived;
+            borrowerReceived = totalAmount - lenderReceived;
             uint256 totalMatchAmount = pool.totalMatchAmount();
             uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;

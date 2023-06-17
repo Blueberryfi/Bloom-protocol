@@ -58,10 +58,7 @@ contract BPSFeedTest is Test {
         assertEq(feed.getWeightedRate(), rate1);
 
         skip(duration2);
-        assertEq(
-            feed.getWeightedRate(),
-            (rate1 * duration1 + rate2 * duration2) / (duration1 + duration2)
-        );
+        assertEq(feed.getWeightedRate(), (rate1 * duration1 + rate2 * duration2) / (duration1 + duration2));
 
         vm.stopPrank();
     }

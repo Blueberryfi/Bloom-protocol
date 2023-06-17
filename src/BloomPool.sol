@@ -71,6 +71,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
         _;
     }
+
     constructor(
         address underlyingToken,
         address billToken,
@@ -86,10 +87,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         uint256 borrowerReturnFee,
         string memory name,
         string memory symbol
-    )
-        ERC20(name, symbol, ERC20(underlyingToken).decimals())
-    {
-
+    ) ERC20(name, symbol, ERC20(underlyingToken).decimals()) {
         UNDERLYING_TOKEN = underlyingToken;
         BILL_TOKEN = billToken;
         WHITELIST = whitelist;
@@ -103,7 +101,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         POOL_PHASE_DURATION = poolPhaseDuration;
         LENDER_RETURN_FEE = lenderReturnFee;
         BORROWER_RETURN_FEE = borrowerReturnFee;
-    }    
+    }
 
     // =============== Deposit Methods ===============
 
@@ -205,10 +203,13 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             uint256 totalMatched = totalMatchAmount();
 
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 lenderReturn = Math.min(totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS, outAmount);
+            uint256 lenderReturn = Math.min(
+                totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS,
+                outAmount
+            );
             uint256 borrowerReturn = outAmount - lenderReturn;
 
-            uint256 lenderReturnFee = (lenderReturn - totalMatched)  * LENDER_RETURN_FEE / BPS;
+            uint256 lenderReturnFee = (lenderReturn - totalMatched) * LENDER_RETURN_FEE / BPS;
             uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
 
             borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
