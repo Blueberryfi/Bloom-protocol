@@ -32,7 +32,7 @@ interface ISwapFacility {
     function whitelist() external view returns (IWhitelist);
 
     /// @notice Get Spread price
-    function spreadPrice() external view returns (uint256);
+    function spread() external view returns (uint256);
 
     /// @notice Get Pool address
     function pool() external view returns (address);
@@ -41,7 +41,7 @@ interface ISwapFacility {
     function setPool(address _pool) external;
 
     /// @notice Set Spread Price
-    function setSpreadPrice(uint256 _spreadPrice) external;
+    function setSpread(uint256 _spread) external;
 
     /// @notice swap tokens Underlying <-> Billy
     function swap(address inToken, address outToken, uint256 inAmount, bytes32[] calldata proof) external;
