@@ -14,14 +14,14 @@ import {SafeCastLib} from "solady/utils/SafeCastLib.sol";
 
 struct AssetCommitment {
     address owner;
-    uint128 commitedAmount;
+    uint128 committedAmount;
     uint128 cumulativeAmountEnd;
 }
 
 struct Commitments {
     mapping(uint256 => AssetCommitment) commitments;
     uint64 commitmentCount;
-    uint192 totalAssetsCommited;
+    uint192 totalAssetsCommitted;
 }
 
 /// @author Blueberry protocol
@@ -38,15 +38,15 @@ library CommitmentsLib {
         unchecked {
             newCommitmendId = commitmentCount++;
         }
-        cumulativeAmountEnd = commitments.totalAssetsCommited + amount;
+        cumulativeAmountEnd = commitments.totalAssetsCommitted + amount;
         commitments.commitments[newCommitmendId] = AssetCommitment({
             owner: owner,
-            commitedAmount: uint128(amount),
+            committedAmount: uint128(amount),
             cumulativeAmountEnd: cumulativeAmountEnd.toUint128()
         });
         commitments.commitmentCount = commitmentCount.toUint64();
         // If safe cast to uint128 did not fail cast to uint192 cannot truncate.
-        commitments.totalAssetsCommited = uint192(cumulativeAmountEnd);
+        commitments.totalAssetsCommitted = uint192(cumulativeAmountEnd);
     }
 
     function getAmountSplit(AssetCommitment storage commitment, uint256 totalIncludedAmount)
@@ -54,20 +54,20 @@ library CommitmentsLib {
         view
         returns (uint256 includedAmount, uint256 excludedAmount)
     {
-        uint256 commitedAmount = commitment.commitedAmount;
+        uint256 committedAmount = commitment.committedAmount;
         uint256 cumulativeAmountEnd = commitment.cumulativeAmountEnd;
         if (totalIncludedAmount >= cumulativeAmountEnd) {
-            includedAmount = commitedAmount;
+            includedAmount = committedAmount;
             excludedAmount = 0;
         } else {
-            uint256 cumulativeAmountStart = cumulativeAmountEnd - commitedAmount;
+            uint256 cumulativeAmountStart = cumulativeAmountEnd - committedAmount;
             if (cumulativeAmountStart > totalIncludedAmount) {
                 includedAmount = 0;
-                excludedAmount = commitedAmount;
+                excludedAmount = committedAmount;
             } else {
                 unchecked {
                     includedAmount = totalIncludedAmount - cumulativeAmountStart;
-                    excludedAmount = commitedAmount - includedAmount;
+                    excludedAmount = committedAmount - includedAmount;
                 }
             }
         }

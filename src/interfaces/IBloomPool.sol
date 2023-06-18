@@ -131,9 +131,9 @@ interface IBloomPool {
         external
         view
         returns (
-            uint256 borrowerDistribution,
-            uint256 totalBorrowerShares,
-            uint256 lenderDistribution,
-            uint256 totalLenderShares
+            uint128 borrowerDistribution,
+            uint128 totalBorrowerShares,
+            uint128 lenderDistribution,
+            uint128 totalLenderShares
         );
 }
