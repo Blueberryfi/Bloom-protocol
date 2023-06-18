@@ -95,10 +95,6 @@ The swap facility implements the `swap` method from the [`ISwapFacility`](src/in
 interface and call the pool's `completeSwap` method from the [`ISwapRecipient`](src/interfaces/ISwapRecipient.sol)
 interface, upon completion.
 
-- `setPool(address _pool)`: Allows for the swap facility to be paired with a specific BillyPool.
- 
-- `setSpreadPrice(uint256 _spreadPrice)`: Allows for the spread to be set such that it carries the slippage of utilizing a marketmaker and the 3rd party issuer of the tokenized treasuries in a unified manner. 
-
 - `swap(address _inToken, address _outToken, uint256 _inAmount, bytes32[] calldata _proof)`- Allows for the swapping of the underlying token and the tokenized treasury token, in a kyc manner that depends on the phase is set.  
 
 **NOTE:** The `outAmount` reported by the swap facility contract to the pool upon completion is very

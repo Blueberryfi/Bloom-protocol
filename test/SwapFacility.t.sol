@@ -11,6 +11,7 @@
 pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
+import {LibRLP} from "solady/utils/LibRLP.sol";
 
 import {SwapFacility} from "src/SwapFacility.sol";
 import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";
@@ -59,13 +60,16 @@ contract SwapFacilityTest is Test {
         ib01Oracle.setAnswer(10000000000);
         whitelist = new MockWhitelist();
 
+        uint256 deployerNonce = vm.getNonce(address(this));
+
         swap = new SwapFacility(
             address(stableToken),
             address(billyToken),
             address(usdcOracle),
             address(ib01Oracle),
             IWhitelist(address(whitelist)),
-            0.002e4
+            0.002e4,
+            LibRLP.computeAddress(address(this), deployerNonce + 1)
         );
         vm.label(address(swap), "SwapFacility");
 
@@ -80,10 +84,11 @@ contract SwapFacilityTest is Test {
             address(swap)
         );
         vm.label(address(pool), "MockBloomPool");
+
+        assertEq(swap.pool(), address(pool));
     }
 
     function initPreHoldSwap() public {
-        swap.setPool(address(pool));
         stableToken.mint(address(pool), 10000_000000);
         pool.initiatePreHoldSwap();
     }
@@ -99,30 +104,7 @@ contract SwapFacilityTest is Test {
         vm.stopPrank();
     }
 
-    function test_setPool_fail_with_UNAUTHORIZED() public {
-        vm.prank(user);
-        vm.expectRevert("UNAUTHORIZED");
-        swap.setPool(address(pool));
-    }
-
-    function test_setPool() public {
-        swap.setPool(address(pool));
-        assertEq(swap.pool(), address(pool));
-    }
-
-    function test_setSpread_fail_with_UNAUTHORIZED() public {
-        vm.prank(user);
-        vm.expectRevert("UNAUTHORIZED");
-        swap.setSpread(0.9999e4);
-    }
-
-    function test_setSpread() public {
-        swap.setSpread(0.9999e4);
-        assertEq(swap.spread(), 0.9999e4);
-    }
-
     function test_swap_fail_with_InvalidToken_stage_0() public {
-        swap.setPool(address(pool));
         whitelist.add(user);
         startHoax(user);
 
@@ -136,7 +118,6 @@ contract SwapFacilityTest is Test {
     }
 
     function test_swap_fail_with_NotPool_stage_0() public {
-        swap.setPool(address(pool));
         whitelist.add(user);
         startHoax(user);
 
@@ -180,15 +161,17 @@ contract SwapFacilityTest is Test {
         whitelist.add(user);
 
         startHoax(user);
-        billyToken.mint(user, 10 ether);
-        billyToken.approve(address(swap), 10 ether);
+        uint256 inAmount = 10e18;
+        billyToken.mint(user, inAmount);
+        billyToken.approve(address(swap), inAmount);
 
         vm.expectEmit(true, true, true, true, address(swap));
-        emit Swap(address(billyToken), address(stableToken), 10 ether, 998_500000, user);
-        swap.swap(address(billyToken), address(stableToken), 10 ether, new bytes32[](0));
+        uint256 outAmount = inAmount * (1e4 + swap.spread()) / 1e14;
+        emit Swap(address(billyToken), address(stableToken), inAmount, outAmount, user);
+        swap.swap(address(billyToken), address(stableToken), inAmount, new bytes32[](0));
 
-        assertEq(stableToken.balanceOf(user), 998_500000);
-        assertEq(billyToken.balanceOf(address(pool)), 10 ether);
+        assertEq(stableToken.balanceOf(user), outAmount);
+        assertEq(billyToken.balanceOf(address(pool)), inAmount);
 
         vm.stopPrank();
     }
@@ -256,15 +239,17 @@ contract SwapFacilityTest is Test {
         pool.initiatePostHoldSwap();
 
         startHoax(user);
-        stableToken.mint(user, 1001_500000);
-        stableToken.approve(address(swap), 1001_500000);
+        uint256 inAmount = 1001_500000;
+        stableToken.mint(user, inAmount);
+        stableToken.approve(address(swap), inAmount);
 
         uint256 beforeBalance = billyToken.balanceOf(user);
         vm.expectEmit(true, true, true, true, address(swap));
-        emit Swap(address(stableToken), address(billyToken), 1001_500000, 10 ether, user);
-        swap.swap(address(stableToken), address(billyToken), 1001_500000, new bytes32[](0));
+        uint256 outAmount = inAmount * (1e4 + swap.spread()) * 1e6;
+        emit Swap(address(stableToken), address(billyToken), inAmount, outAmount, user);
+        swap.swap(address(stableToken), address(billyToken), inAmount, new bytes32[](0));
 
-        assertEq(billyToken.balanceOf(user), beforeBalance + 10 ether);
+        assertEq(billyToken.balanceOf(user), beforeBalance + outAmount);
         assertEq(stableToken.balanceOf(address(pool)), 1001_500000);
 
         vm.stopPrank();

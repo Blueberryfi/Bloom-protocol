@@ -37,12 +37,6 @@ interface ISwapFacility {
     /// @notice Get Pool address
     function pool() external view returns (address);
 
-    /// @notice Set Pool Address
-    function setPool(address _pool) external;
-
-    /// @notice Set Spread Price
-    function setSpread(uint256 _spread) external;
-
     /// @notice swap tokens Underlying <-> Billy
     function swap(address inToken, address outToken, uint256 inAmount, bytes32[] calldata proof) external;
 }

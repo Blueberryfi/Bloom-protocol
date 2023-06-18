@@ -40,10 +40,10 @@ contract SwapFacility is ISwapFacility, Owned {
     IWhitelist public immutable whitelist;
 
     /// @notice Spread in basis points
-    uint256 public spread;
+    uint256 public immutable spread;
 
     /// @dev Pool address
-    address public pool;
+    address public immutable pool;
 
     uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
     uint256 internal constant BPS = 1e4;
@@ -79,22 +79,16 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Not Whitelisted
     error NotWhitelisted();
 
+    /// @dev Oracle reported negative `answer`.
     error OracleAnswerNegative();
+
+    /// @dev Oracle response is more than `ORACLE_STALE_THRESHOLD` old.
     error OracleStale();
+
+    /// @dev Given `spread` parameter is >=100%
     error InvalidSpread();
-    error UnsafePoolChange();
 
     // =================== Events ===================
-
-    /// @notice Pool Updated Event
-    /// @param oldPool Old pool address
-    /// @param newPool New pool address
-    event PoolUpdated(address indexed oldPool, address indexed newPool);
-
-    /// @notice Spread Price Updated Event
-    /// @param oldPrice Old spread price
-    /// @param newPrice New spread price
-    event SpreadUpdated(uint256 indexed oldPrice, uint256 indexed newPrice);
 
     /// @notice Swap Event
     /// @param inToken In token address
@@ -127,35 +121,17 @@ contract SwapFacility is ISwapFacility, Owned {
         address _underlyingTokenOracle,
         address _billyTokenOracle,
         IWhitelist _whitelist,
-        uint256 _spread
+        uint256 _spread,
+        address _pool
     ) Owned(msg.sender) {
+        if (_spread >= BPS) revert InvalidSpread();
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
         billyTokenOracle = _billyTokenOracle;
         whitelist = _whitelist;
-        _setSpread(_spread);
-    }
-
-    /// @notice Set Pool Address
-    /// @param _pool New pool address
-    function setPool(address _pool) external onlyOwner {
-        address oldPool = pool;
-        if (oldPool.code.length != 0) {
-            // Note a bad `oldPool` address can still brick the `setPool` change process if it
-            // returns a value that does not decode into a valid `State` value.
-            try IBloomPool(oldPool).state() returns (State state) {
-                if (state != State.FinalWithdraw) revert UnsafePoolChange();
-            } catch {}
-        }
+        spread = _spread;
         pool = _pool;
-        emit PoolUpdated(oldPool, _pool);
-    }
-
-    /// @notice Set Spread Price
-    /// @param _spread New spread price
-    function setSpread(uint256 _spread) external onlyOwner {
-        _setSpread(_spread);
     }
 
     /// @notice Swap tokens UNDERLYING <-> BILLY
@@ -211,10 +187,10 @@ contract SwapFacility is ISwapFacility, Owned {
         (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken == underlyingToken
             ? (underlyingTokenPrice, billyTokenPrice)
             : (billyTokenPrice, underlyingTokenPrice);
-        outAmount = (_inAmount * inTokenPrice * (BPS - spread)) / outTokenPrice / BPS;
+        outAmount = (_inAmount * inTokenPrice * (BPS + spread)) / outTokenPrice / BPS;
         if (_swapAmount < outAmount) {
             outAmount = _swapAmount;
-            _inAmount = (outAmount * outTokenPrice) / inTokenPrice;
+            _inAmount = (outAmount * outTokenPrice * BPS) / inTokenPrice / (BPS + spread);
         }
         unchecked {
             _swapAmount -= outAmount;
@@ -225,6 +201,7 @@ contract SwapFacility is ISwapFacility, Owned {
         if (_swapAmount == 0) {
             ++_stage;
             ISwapRecipient(pool).completeSwap(_inToken, _totalAmount);
+            _totalAmount = 0;
         }
 
         emit Swap(_inToken, _outToken, _inAmount, outAmount, _to);
@@ -236,12 +213,5 @@ contract SwapFacility is ISwapFacility, Owned {
     function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
         underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * 1e12;
         billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer());
-    }
-
-    function _setSpread(uint256 _spread) internal {
-        if (_spread >= BPS) revert InvalidSpread();
-        uint256 oldSpread = spread;
-        spread = _spread;
-        emit SpreadUpdated(oldSpread, _spread);
     }
 }
