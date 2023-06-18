@@ -17,8 +17,6 @@ import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
 /// @author Blueberry protocol
 contract MerkleWhitelist is IWhitelist, Owned {
-    event NewWhitelistRoot(bytes32 newRoot);
-
     bytes32 public whitelistMerkleRoot;
 
     constructor(bytes32 initialRoot, address initialOwner) Owned(initialOwner) {
@@ -30,6 +28,7 @@ contract MerkleWhitelist is IWhitelist, Owned {
         emit NewWhitelistRoot(whitelistMerkleRoot = newRoot);
     }
 
+    /// @dev Validates the provided merkle proof `proof` for `member`.
     function isWhitelisted(address member, bytes32[] calldata proof) external view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(member));
         return MerkleProofLib.verify(proof, whitelistMerkleRoot, leaf);
