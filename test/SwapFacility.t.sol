@@ -65,7 +65,7 @@ contract SwapFacilityTest is Test {
             address(usdcOracle),
             address(ib01Oracle),
             IWhitelist(address(whitelist)),
-            15000000
+            0.002e4
         );
         vm.label(address(swap), "SwapFacility");
 
@@ -110,15 +110,15 @@ contract SwapFacilityTest is Test {
         assertEq(swap.pool(), address(pool));
     }
 
-    function test_setSpreadPrice_fail_with_UNAUTHORIZED() public {
+    function test_setSpread_fail_with_UNAUTHORIZED() public {
         vm.prank(user);
         vm.expectRevert("UNAUTHORIZED");
-        swap.setSpreadPrice(20000000);
+        swap.setSpread(0.9999e4);
     }
 
-    function test_setSpreadPrice() public {
-        swap.setSpreadPrice(20000000);
-        assertEq(swap.spreadPrice(), 20000000);
+    function test_setSpread() public {
+        swap.setSpread(0.9999e4);
+        assertEq(swap.spread(), 0.9999e4);
     }
 
     function test_swap_fail_with_InvalidToken_stage_0() public {
