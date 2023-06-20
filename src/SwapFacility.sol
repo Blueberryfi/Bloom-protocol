@@ -52,7 +52,7 @@ contract SwapFacility is ISwapFacility, Owned {
     uint internal constant MAX_SPREAD = 0.1e4; // 10%
 
 
-    uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
 
     /// @dev Current swap stage
     /// 0: Not started
@@ -235,7 +235,7 @@ contract SwapFacility is ISwapFacility, Owned {
 
     function _readOracle(address _oracle) internal view returns (uint256) {
         (, int256 answer,, uint256 updatedAt,) = IOracle(_oracle).latestRoundData();
-        if (answer < 0) revert OracleAnswerNegative();
+        if (answer <= 0) revert OracleAnswerNegative();
         if (block.timestamp - updatedAt >= ORACLE_STALE_THRESHOLD) revert OracleStale();
         return uint256(answer);
     }
