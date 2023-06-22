@@ -121,11 +121,11 @@ contract BloomPoolTest is Test {
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(expectedId);
         assertEq(commitment.owner, user);
-        assertEq(commitment.commitedAmount, amount);
+        assertEq(commitment.committedAmount, amount);
         assertEq(commitment.cumulativeAmountEnd, amount);
 
-        (uint256 totalAssetsCommited, uint256 totalCommitments) = pool.getTotalBorrowCommitment();
-        assertEq(totalAssetsCommited, amount);
+        (uint256 totalAssetsCommitted, uint256 totalCommitments) = pool.getTotalBorrowCommitment();
+        assertEq(totalAssetsCommitted, amount);
         assertEq(totalCommitments, 1);
     }
 
@@ -144,11 +144,11 @@ contract BloomPoolTest is Test {
 
         AssetCommitment memory commitment = pool.getLenderCommitment(expectedId);
         assertEq(commitment.owner, user);
-        assertEq(commitment.commitedAmount, amount);
+        assertEq(commitment.committedAmount, amount);
         assertEq(commitment.cumulativeAmountEnd, amount);
 
-        (uint256 totalAssetsCommited, uint256 totalCommitments) = pool.getTotalLendCommitment();
-        assertEq(totalAssetsCommited, amount);
+        (uint256 totalAssetsCommitted, uint256 totalCommitments) = pool.getTotalLendCommitment();
+        assertEq(totalAssetsCommitted, amount);
         assertEq(totalCommitments, 1);
     }
 
@@ -207,7 +207,7 @@ contract BloomPoolTest is Test {
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(id);
         assertEq(commitment.cumulativeAmountEnd, 0);
-        assertEq(commitment.commitedAmount, borrowerAmount);
+        assertEq(commitment.committedAmount, borrowerAmount);
 
         vm.expectRevert(IBloomPool.NoCommitToProcess.selector);
         pool.processBorrowerCommit(id);
@@ -256,7 +256,7 @@ contract BloomPoolTest is Test {
 
             AssetCommitment memory commitment = pool.getBorrowCommitment(id);
             assertEq(commitment.cumulativeAmountEnd, 0);
-            assertEq(commitment.commitedAmount, allocatedBorrowerAmount);
+            assertEq(commitment.committedAmount, allocatedBorrowerAmount);
         } else {
             uint256 allocatedLenderAmount = borrowerAmount * leverage / BPS;
 
@@ -391,7 +391,7 @@ contract BloomPoolTest is Test {
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(borrowId);
         assertEq(commitment.cumulativeAmountEnd, 0);
-        assertEq(commitment.commitedAmount, 0);
+        assertEq(commitment.committedAmount, 0);
         assertEq(commitment.owner, address(0));
 
         vm.stopPrank();

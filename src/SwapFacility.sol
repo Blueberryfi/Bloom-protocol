@@ -67,14 +67,8 @@ contract SwapFacility is ISwapFacility, Owned {
 
     // =================== Errors ===================
 
-    /// @notice Invalid Address
-    error InvalidAddress();
-
     /// @notice Invalid Token
     error InvalidToken();
-
-    /// Pool Not Set
-    error PoolNotSet();
 
     /// @notice Not Pool
     error NotPool();

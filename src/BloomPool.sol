@@ -140,9 +140,9 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     function processBorrowerCommit(uint256 id) external onlyAfterState(State.Commit) {
         AssetCommitment storage commitment = borrowers.commitments[id];
         if (commitment.cumulativeAmountEnd == 0) revert NoCommitToProcess();
-        uint256 commitedBorrowValue = lenders.totalAssetsCommited * BPS / LEVERAGE_BPS;
-        (uint256 includedAmount, uint256 excludedAmount) = commitment.getAmountSplit(commitedBorrowValue);
-        commitment.commitedAmount = includedAmount.toUint128();
+        uint256 committedBorrowValue = lenders.totalAssetsCommitted * BPS / LEVERAGE_BPS;
+        (uint256 includedAmount, uint256 excludedAmount) = commitment.getAmountSplit(committedBorrowValue);
+        commitment.committedAmount = includedAmount.toUint128();
         commitment.cumulativeAmountEnd = 0;
         address owner = commitment.owner;
         emit BorrowerCommitmentProcessed(owner, id, includedAmount, excludedAmount);
@@ -155,8 +155,8 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     function processLenderCommit(uint256 id) external onlyAfterState(State.Commit) {
         AssetCommitment storage commitment = lenders.commitments[id];
         if (commitment.cumulativeAmountEnd == 0) revert NoCommitToProcess();
-        uint256 commitedBorrowValue = borrowers.totalAssetsCommited * LEVERAGE_BPS / BPS;
-        (uint256 includedAmount, uint256 excludedAmount) = commitment.getAmountSplit(commitedBorrowValue);
+        uint256 committedBorrowValue = borrowers.totalAssetsCommitted * LEVERAGE_BPS / BPS;
+        (uint256 includedAmount, uint256 excludedAmount) = commitment.getAmountSplit(committedBorrowValue);
         address owner = commitment.owner;
         delete lenders.commitments[id];
         _mint(owner, includedAmount);
@@ -171,6 +171,8 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
      */
     function initiatePreHoldSwap() external onlyState(State.ReadyPreHoldSwap) {
         uint256 amountToSwap = totalMatchAmount() * (LEVERAGE_BPS + BPS) / LEVERAGE_BPS;
+        // Reset allowance to zero before to ensure can always set for weird tokens like USDT.
+        UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, 0);
         UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         emit ExplictStateTransition(State.ReadyPreHoldSwap, setState = State.PendingPreHoldSwap);
         ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, new bytes32[](0));
@@ -181,8 +183,9 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
      */
     function initiatePostHoldSwap() external onlyState(State.ReadyPostHoldSwap) {
         uint256 amountToSwap = ERC20(BILL_TOKEN).balanceOf(address(this));
+        // Reset allowance to zero before to ensure can always set for weird tokens like USDT.
+        BILL_TOKEN.safeApprove(SWAP_FACILITY, 0);
         BILL_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
-        setState = State.PendingPostHoldSwap;
         emit ExplictStateTransition(State.ReadyPostHoldSwap, setState = State.PendingPostHoldSwap);
         ISwapFacility(SWAP_FACILITY).swap(BILL_TOKEN, UNDERLYING_TOKEN, amountToSwap, new bytes32[](0));
     }
@@ -236,7 +239,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         if (commitment.cumulativeAmountEnd != 0) revert CanOnlyWithdrawProcessedCommit(id);
         address owner = commitment.owner;
         if (owner == address(0)) revert NoCommitToWithdraw();
-        uint256 shares = commitment.commitedAmount;
+        uint256 shares = commitment.committedAmount;
         uint256 currentBorrowerDist = borrowerDistribution;
         uint256 sharesLeft = totalBorrowerShares;
         uint256 claimAmount = shares * currentBorrowerDist / sharesLeft;
@@ -265,8 +268,8 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     /// @notice Returns amount of lender-to-borrower demand that was matched.
     function totalMatchAmount() public view returns (uint256) {
-        uint256 borrowDemand = borrowers.totalAssetsCommited * LEVERAGE_BPS / BPS;
-        uint256 lendDemand = lenders.totalAssetsCommited;
+        uint256 borrowDemand = borrowers.totalAssetsCommitted * LEVERAGE_BPS / BPS;
+        uint256 lendDemand = lenders.totalAssetsCommitted;
         return Math.min(borrowDemand, lendDemand);
     }
 
@@ -295,22 +298,22 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     function getTotalBorrowCommitment()
         external
         view
-        returns (uint256 totalAssetsCommited, uint256 totalCommitmentCount)
+        returns (uint256 totalAssetsCommitted, uint256 totalCommitmentCount)
     {
-        totalAssetsCommited = borrowers.totalAssetsCommited;
+        totalAssetsCommitted = borrowers.totalAssetsCommitted;
         totalCommitmentCount = borrowers.commitmentCount;
     }
 
     function getTotalLendCommitment()
         external
         view
-        returns (uint256 totalAssetsCommited, uint256 totalCommitmentCount)
+        returns (uint256 totalAssetsCommitted, uint256 totalCommitmentCount)
     {
-        totalAssetsCommited = lenders.totalAssetsCommited;
+        totalAssetsCommitted = lenders.totalAssetsCommitted;
         totalCommitmentCount = lenders.commitmentCount;
     }
 
-    function getDistributionInfo() external view returns (uint256, uint256, uint256, uint256) {
+    function getDistributionInfo() external view returns (uint128, uint128, uint128, uint128) {
         return (borrowerDistribution, totalBorrowerShares, lenderDistribution, totalLenderShares);
     }
 }
