@@ -47,13 +47,9 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Pool address
     address public immutable pool;
 
-    uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant MAX_SPREAD = 0.1e4; // 10%
-
-    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
-
-    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
 
     /// @dev Current swap stage
     /// 0: Not started
