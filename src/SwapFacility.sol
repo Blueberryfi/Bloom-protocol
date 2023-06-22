@@ -16,6 +16,7 @@ import {Owned} from "solmate/auth/Owned.sol";
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
+import {IBloomPool, State} from "./interfaces/IBloomPool.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 
 /// @author Blueberry protocol
@@ -38,11 +39,16 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Whitelist contract
     IWhitelist public immutable whitelist;
 
-    /// @notice Spread price
-    uint256 public spreadPrice;
+    /// @notice Spread in basis points
+    uint256 public immutable spread;
 
     /// @dev Pool address
-    address public pool;
+    address public immutable pool;
+
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
+    uint256 internal constant BPS = 1e4;
+    uint internal constant MAX_SPREAD = 0.1e4; // 10%
+
 
     /// @dev Current swap stage
     /// 0: Not started
@@ -75,17 +81,16 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @notice Not Whitelisted
     error NotWhitelisted();
 
+    /// @dev Oracle reported negative `answer`.
+    error OracleAnswerNegative();
+
+    /// @dev Oracle response is more than `ORACLE_STALE_THRESHOLD` old.
+    error OracleStale();
+
+    /// @dev Given `spread` parameter is >=100%
+    error InvalidSpread();
+
     // =================== Events ===================
-
-    /// @notice Pool Updated Event
-    /// @param oldPool Old pool address
-    /// @param newPool New pool address
-    event PoolUpdated(address indexed oldPool, address indexed newPool);
-
-    /// @notice Spread Price Updated Event
-    /// @param oldPrice Old spread price
-    /// @param newPrice New spread price
-    event SpreadPriceUpdated(uint256 indexed oldPrice, uint256 indexed newPrice);
 
     /// @notice Swap Event
     /// @param inToken In token address
@@ -111,37 +116,24 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _underlyingTokenOracle Price oracle for underlying token
     /// @param _billyTokenOracle Price oracle for billy token
     /// @param _whitelist Whitelist contract
-    /// @param _spreadPrice Spread price
+    /// @param _spread Spread price
     constructor(
         address _underlyingToken,
         address _billyToken,
         address _underlyingTokenOracle,
         address _billyTokenOracle,
         IWhitelist _whitelist,
-        uint256 _spreadPrice
+        uint256 _spread,
+        address _pool
     ) Owned(msg.sender) {
+        if (_spread > MAX_SPREAD) revert InvalidSpread();
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
         billyTokenOracle = _billyTokenOracle;
         whitelist = _whitelist;
-        spreadPrice = _spreadPrice;
-    }
-
-    /// @notice Set Pool Address
-    /// @param _pool New pool address
-    function setPool(address _pool) external onlyOwner {
-        address oldPool = pool;
+        spread = _spread;
         pool = _pool;
-        emit PoolUpdated(oldPool, _pool);
-    }
-
-    /// @notice Set Spread Price
-    /// @param _spreadPrice New spread price
-    function setSpreadPrice(uint256 _spreadPrice) external onlyOwner {
-        uint256 oldSpreadPrice = spreadPrice;
-        spreadPrice = _spreadPrice;
-        emit SpreadPriceUpdated(oldSpreadPrice, _spreadPrice);
     }
 
     /// @notice Swap tokens UNDERLYING <-> BILLY
@@ -195,12 +187,12 @@ contract SwapFacility is ISwapFacility, Owned {
     {
         (uint256 underlyingTokenPrice, uint256 billyTokenPrice) = _getTokenPrices();
         (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken == underlyingToken
-            ? (underlyingTokenPrice, billyTokenPrice + spreadPrice)
-            : (billyTokenPrice - spreadPrice, underlyingTokenPrice);
-        outAmount = (_inAmount * inTokenPrice) / outTokenPrice;
+            ? (underlyingTokenPrice, billyTokenPrice)
+            : (billyTokenPrice, underlyingTokenPrice);
+        outAmount = (_inAmount * inTokenPrice * (BPS + spread)) / outTokenPrice / BPS;
         if (_swapAmount < outAmount) {
             outAmount = _swapAmount;
-            _inAmount = (outAmount * outTokenPrice) / inTokenPrice;
+            _inAmount = (outAmount * outTokenPrice * BPS) / inTokenPrice / (BPS + spread);
         }
         unchecked {
             _swapAmount -= outAmount;
@@ -211,6 +203,7 @@ contract SwapFacility is ISwapFacility, Owned {
         if (_swapAmount == 0) {
             ++_stage;
             ISwapRecipient(pool).completeSwap(_inToken, _totalAmount);
+            _totalAmount = 0;
         }
 
         emit Swap(_inToken, _outToken, _inAmount, outAmount, _to);
