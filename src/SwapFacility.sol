@@ -47,10 +47,9 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Pool address
     address public immutable pool;
 
-    uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
     uint256 internal constant BPS = 1e4;
-    uint internal constant MAX_SPREAD = 0.1e4; // 10%
-
+    uint256 internal constant MAX_SPREAD = 0.1e4; // 10%
 
     /// @dev Current swap stage
     /// 0: Not started
@@ -226,8 +225,14 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
     function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
-        // Scaled with each other's decimals so they cancel out when calculating `x * priceA / priceB`.
-        underlyingTokenPrice = uint256(IOracle(underlyingTokenOracle).latestAnswer()) * billyScale;
-        billyTokenPrice = uint256(IOracle(billyTokenOracle).latestAnswer()) * underlyingScale;
+        underlyingTokenPrice = _readOracle(underlyingTokenOracle) * billyScale;
+        billyTokenPrice = _readOracle(billyTokenOracle) * underlyingScale;
+    }
+
+    function _readOracle(address _oracle) internal view returns (uint256) {
+        (, int256 answer,, uint256 updatedAt,) = IOracle(_oracle).latestRoundData();
+        if (answer <= 0) revert OracleAnswerNegative();
+        if (block.timestamp - updatedAt >= ORACLE_STALE_THRESHOLD) revert OracleStale();
+        return uint256(answer);
     }
 }
