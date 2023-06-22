@@ -43,6 +43,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     uint256 public immutable LEVERAGE_BPS;
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
+    uint256 public immutable PRE_HOLD_SWAP_TIMEOUT_END;
     uint256 public immutable POOL_PHASE_END;
     uint256 public immutable POOL_PHASE_DURATION;
     uint256 public immutable LENDER_RETURN_FEE;
@@ -82,6 +83,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         uint256 leverageBps,
         uint256 minBorrowDeposit,
         uint256 commitPhaseDuration,
+        uint256 preHoldSwapTimeout,
         uint256 poolPhaseDuration,
         uint256 lenderReturnFee,
         uint256 borrowerReturnFee,
@@ -97,6 +99,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         LEVERAGE_BPS = leverageBps;
         MIN_BORROW_DEPOSIT = minBorrowDeposit;
         COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
+        PRE_HOLD_SWAP_TIMEOUT_END = block.timestamp + commitPhaseDuration + preHoldSwapTimeout;
         POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;
         POOL_PHASE_DURATION = poolPhaseDuration;
         LENDER_RETURN_FEE = lenderReturnFee;
@@ -264,6 +267,32 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         UNDERLYING_TOKEN.safeTransfer(msg.sender, claimAmount);
     }
 
+    // ========= Emergency Withdraw Methods ==========
+
+    /**
+     * @inheritdoc IBloomPool
+     */
+    function emergencyWithdrawBorrow(uint256 id) external onlyState(State.EmergencyExit) {
+        AssetCommitment storage commitment = borrowers.commitments[id];
+        if (commitment.cumulativeAmountEnd != 0) revert CanOnlyWithdrawProcessedCommit(id);
+        address owner = commitment.owner;
+        if (owner == address(0)) revert NoCommitToWithdraw();
+        uint256 amount = commitment.committedAmount;
+        delete borrowers.commitments[id];
+        emit BorrowerEmergencyWithdraw(owner, id, amount);
+        UNDERLYING_TOKEN.safeTransfer(owner, amount);
+    }
+
+    /**
+     * @inheritdoc IBloomPool
+     */
+    function emergencyWithdrawLender(uint256 shares) external onlyState(State.EmergencyExit) {
+        _burn(msg.sender, shares);
+        emit LenderEmergencyWithdraw(msg.sender, shares);
+        // Minted 1:1 in `processLenderCommit`, redeemed 1:1 in emergency (no swap executed).
+        UNDERLYING_TOKEN.safeTransfer(msg.sender, shares);
+    }
+
     // ================ View Methods =================
 
     /// @notice Returns amount of lender-to-borrower demand that was matched.
@@ -280,6 +309,9 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         State lastState = setState;
         if (lastState == State.Commit && block.timestamp >= COMMIT_PHASE_END) {
             return State.ReadyPreHoldSwap;
+        }
+        if (lastState == State.PendingPreHoldSwap && block.timestamp >= PRE_HOLD_SWAP_TIMEOUT_END) {
+            return State.EmergencyExit;
         }
         if (lastState == State.Holding && block.timestamp >= POOL_PHASE_END) {
             return State.ReadyPostHoldSwap;

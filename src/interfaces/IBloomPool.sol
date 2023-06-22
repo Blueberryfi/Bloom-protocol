@@ -21,6 +21,7 @@ enum State {
     Holding,
     ReadyPostHoldSwap,
     PendingPostHoldSwap,
+    EmergencyExit,
     FinalWithdraw
 }
 
@@ -52,6 +53,8 @@ interface IBloomPool {
     event ExplictStateTransition(State prevState, State newState);
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
+    event BorrowerEmergencyWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
+    event LenderEmergencyWithdraw(address indexed owner, uint256 amount);
 
     /// @notice Initiates the pre-hold swap.
     function initiatePreHoldSwap() external;
@@ -98,6 +101,20 @@ interface IBloomPool {
      */
     function withdrawLender(uint256 shares) external;
 
+    /**
+     * @notice Allows borrowers to withdraw their original deposit should the pre-hold swap not be
+     * completed before the timeout.
+     * @param id The borrower's commitment ID.
+     */
+    function emergencyWithdrawBorrow(uint256 id) external;
+
+    /**
+     * @notice Allows lenders to withdraw their original deposit should the pre-hold swap not be
+     * completed before the timeout.
+     * @param shares The number of lender shares to withdraw.
+     */
+    function emergencyWithdrawLender(uint256 shares) external;
+
     function UNDERLYING_TOKEN() external view returns (address);
     function BILL_TOKEN() external view returns (address);
     function WHITELIST() external view returns (IWhitelist);
@@ -107,6 +124,7 @@ interface IBloomPool {
     function LEVERAGE_BPS() external view returns (uint256);
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
     function COMMIT_PHASE_END() external view returns (uint256);
+    function PRE_HOLD_SWAP_TIMEOUT_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
     function POOL_PHASE_DURATION() external view returns (uint256);
     function LENDER_RETURN_FEE() external view returns (uint256);

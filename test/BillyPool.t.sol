@@ -71,6 +71,7 @@ contract BloomPoolTest is Test {
             leverageBps: 4 * BPS,
             minBorrowDeposit: 100.0e18,
             commitPhaseDuration: commitPhaseDuration = 3 days,
+            preHoldSwapTimeout: 7 days,
             poolPhaseDuration: poolPhaseDuration = 30 days,
             lenderReturnBpsFeed: address(feed),
             lenderReturnFee: 1000,

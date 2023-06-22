@@ -69,7 +69,9 @@ contract SwapFacilityTest is Test {
             address(ib01Oracle),
             IWhitelist(address(whitelist)),
             0.002e4,
-            LibRLP.computeAddress(address(this), deployerNonce + 1)
+            LibRLP.computeAddress(address(this), deployerNonce + 1),
+            0,
+            type(uint256).max
         );
         vm.label(address(swap), "SwapFacility");
 
