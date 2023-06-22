@@ -38,6 +38,12 @@ contract SwapFacility is ISwapFacility, Owned {
     address public immutable billyTokenOracle;
     uint256 public immutable billyScale;
 
+    /// @dev Minimum value of the stable asset (denominated in the oracle's decimals).
+    uint256 internal immutable MIN_STABLE_VALUE;
+
+    /// @dev Maximum fair value of the t-bill asset (denominated in the oracle's decimals).
+    uint256 internal immutable MAX_BILLY_VALUE;
+
     /// @notice Whitelist contract
     IWhitelist public immutable whitelist;
 
@@ -85,6 +91,8 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Given `spread` parameter is >=100%
     error InvalidSpread();
 
+    error ExtremePrice();
+
     // =================== Events ===================
 
     /// @notice Swap Event
@@ -112,6 +120,8 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _billyTokenOracle Price oracle for billy token
     /// @param _whitelist Whitelist contract
     /// @param _spread Spread price
+    /// @param _minStableValue Minimum value of the stable asset (denominated in the oracle's decimals)
+    /// @param _maxBillyValue Maximum fair value of the t-bill asset (denominated in the oracle's decimals)
     constructor(
         address _underlyingToken,
         address _billyToken,
@@ -119,7 +129,9 @@ contract SwapFacility is ISwapFacility, Owned {
         address _billyTokenOracle,
         IWhitelist _whitelist,
         uint256 _spread,
-        address _pool
+        address _pool,
+        uint256 _minStableValue,
+        uint256 _maxBillyValue
     ) Owned(msg.sender) {
         if (_spread > MAX_SPREAD) revert InvalidSpread();
         underlyingToken = _underlyingToken;
@@ -140,6 +152,8 @@ contract SwapFacility is ISwapFacility, Owned {
         whitelist = _whitelist;
         spread = _spread;
         pool = _pool;
+        MIN_STABLE_VALUE = _minStableValue;
+        MAX_BILLY_VALUE = _maxBillyValue;
     }
 
     /// @notice Swap tokens UNDERLYING <-> BILLY
@@ -162,7 +176,7 @@ contract SwapFacility is ISwapFacility, Owned {
             if (_inToken != billyToken || _outToken != underlyingToken) {
                 revert InvalidToken();
             }
-            _swap(_inToken, _outToken, _inAmount, msg.sender);
+            _swap(_inToken, _outToken, _inAmount, msg.sender, true);
         } else if (_stage == 2) {
             if (_inToken != billyToken || _outToken != underlyingToken) {
                 revert InvalidToken();
@@ -174,7 +188,7 @@ contract SwapFacility is ISwapFacility, Owned {
             if (_inToken != underlyingToken || _outToken != billyToken) {
                 revert InvalidToken();
             }
-            _swap(_inToken, _outToken, _inAmount, msg.sender);
+            _swap(_inToken, _outToken, _inAmount, msg.sender, false);
         }
     }
 
@@ -187,11 +201,11 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @param _outToken Out token address
     /// @param _inAmount In token amount
     /// @param _to To address
-    function _swap(address _inToken, address _outToken, uint256 _inAmount, address _to)
+    function _swap(address _inToken, address _outToken, uint256 _inAmount, address _to, bool _boundPrices)
         internal
         returns (uint256 outAmount)
     {
-        (uint256 underlyingTokenPrice, uint256 billyTokenPrice) = _getTokenPrices();
+        (uint256 underlyingTokenPrice, uint256 billyTokenPrice) = _getTokenPrices(_boundPrices);
         (uint256 inTokenPrice, uint256 outTokenPrice) = _inToken == underlyingToken
             ? (underlyingTokenPrice, billyTokenPrice)
             : (billyTokenPrice, underlyingTokenPrice);
@@ -218,9 +232,19 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @dev Get prices of underlying and billy tokens
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
-    function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
-        underlyingTokenPrice = _readOracle(underlyingTokenOracle) * billyScale;
-        billyTokenPrice = _readOracle(billyTokenOracle) * underlyingScale;
+    function _getTokenPrices(bool _boundPrices)
+        internal
+        view
+        returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice)
+    {
+        uint256 stablePrice = _readOracle(underlyingTokenOracle);
+        underlyingTokenPrice = stablePrice * billyScale;
+        uint256 billyPrice = _readOracle(billyTokenOracle);
+        if (_boundPrices) {
+            if (stablePrice < MIN_STABLE_VALUE) revert ExtremePrice();
+            if (billyPrice > MAX_BILLY_VALUE) revert ExtremePrice();
+        }
+        billyTokenPrice = billyPrice * underlyingScale;
     }
 
     function _readOracle(address _oracle) internal view returns (uint256) {

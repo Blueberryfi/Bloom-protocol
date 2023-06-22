@@ -21,6 +21,7 @@ enum State {
     Holding,
     ReadyPostHoldSwap,
     PendingPostHoldSwap,
+    EmergencyExit,
     FinalWithdraw
 }
 
@@ -41,6 +42,8 @@ interface IBloomPool {
 
     error InvalidState(State current);
 
+    error NotEmergencyHandler();
+
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
     event LenderCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
     event BorrowerCommitmentProcessed(
@@ -52,6 +55,8 @@ interface IBloomPool {
     event ExplictStateTransition(State prevState, State newState);
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
+
+    event EmergencyWithdraw(address indexed to);
 
     /// @notice Initiates the pre-hold swap.
     function initiatePreHoldSwap() external;
@@ -107,6 +112,7 @@ interface IBloomPool {
     function LEVERAGE_BPS() external view returns (uint256);
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
     function COMMIT_PHASE_END() external view returns (uint256);
+    function PRE_HOLD_SWAP_TIMEOUT_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
     function POOL_PHASE_DURATION() external view returns (uint256);
     function LENDER_RETURN_FEE() external view returns (uint256);
