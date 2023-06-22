@@ -54,6 +54,8 @@ contract SwapFacility is ISwapFacility, Owned {
 
     uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
 
+    uint256 internal constant ORACLE_STALE_THRESHOLD = 1 hours;
+
     /// @dev Current swap stage
     /// 0: Not started
     /// 1: Underlying -> Billy swap initiated
@@ -228,7 +230,6 @@ contract SwapFacility is ISwapFacility, Owned {
     /// @return underlyingTokenPrice Underlying token price
     /// @return billyTokenPrice Billy token price
     function _getTokenPrices() internal view returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice) {
-        // Scaled with each other's decimals so they cancel out when calculating `x * priceA / priceB`.
         underlyingTokenPrice = _readOracle(underlyingTokenOracle) * billyScale;
         billyTokenPrice = _readOracle(billyTokenOracle) * underlyingScale;
     }
