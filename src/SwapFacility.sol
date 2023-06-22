@@ -47,6 +47,8 @@ contract SwapFacility is ISwapFacility, Owned {
 
     uint256 internal constant ORACLE_STALE_THRESHOLD = 24 hours;
     uint256 internal constant BPS = 1e4;
+    uint internal constant MAX_SPREAD = 0.1e4; // 10%
+
 
     /// @dev Current swap stage
     /// 0: Not started
@@ -124,7 +126,7 @@ contract SwapFacility is ISwapFacility, Owned {
         uint256 _spread,
         address _pool
     ) Owned(msg.sender) {
-        if (_spread >= BPS) revert InvalidSpread();
+        if (_spread > MAX_SPREAD) revert InvalidSpread();
         underlyingToken = _underlyingToken;
         billyToken = _billyToken;
         underlyingTokenOracle = _underlyingTokenOracle;
