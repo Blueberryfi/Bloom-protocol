@@ -39,6 +39,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     IWhitelist public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
     address public immutable TREASURY;
+    address public immutable EMERGENCY_HANDLER;
     address public immutable LENDER_RETURN_BPS_FEED;
     uint256 public immutable LEVERAGE_BPS;
     uint256 public immutable MIN_BORROW_DEPOSIT;
@@ -80,6 +81,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         address swapFacility,
         address treasury,
         address lenderReturnBpsFeed,
+        address emergencyHandler,
         uint256 leverageBps,
         uint256 minBorrowDeposit,
         uint256 commitPhaseDuration,
@@ -96,6 +98,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         SWAP_FACILITY = swapFacility;
         TREASURY = treasury;
         LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
+        EMERGENCY_HANDLER = emergencyHandler;
         LEVERAGE_BPS = leverageBps;
         MIN_BORROW_DEPOSIT = minBorrowDeposit;
         COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
@@ -269,28 +272,11 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     // ========= Emergency Withdraw Methods ==========
 
-    /**
-     * @inheritdoc IBloomPool
-     */
-    function emergencyWithdrawBorrow(uint256 id) external onlyState(State.EmergencyExit) {
-        AssetCommitment storage commitment = borrowers.commitments[id];
-        if (commitment.cumulativeAmountEnd != 0) revert CanOnlyWithdrawProcessedCommit(id);
-        address owner = commitment.owner;
-        if (owner == address(0)) revert NoCommitToWithdraw();
-        uint256 amount = commitment.committedAmount;
-        delete borrowers.commitments[id];
-        emit BorrowerEmergencyWithdraw(owner, id, amount);
-        UNDERLYING_TOKEN.safeTransfer(owner, amount);
-    }
-
-    /**
-     * @inheritdoc IBloomPool
-     */
-    function emergencyWithdrawLender(uint256 shares) external onlyState(State.EmergencyExit) {
-        _burn(msg.sender, shares);
-        emit LenderEmergencyWithdraw(msg.sender, shares);
-        // Minted 1:1 in `processLenderCommit`, redeemed 1:1 in emergency (no swap executed).
-        UNDERLYING_TOKEN.safeTransfer(msg.sender, shares);
+    function emergencyWithdrawTo(address to) external onlyState(State.EmergencyExit) {
+        if (msg.sender != EMERGENCY_HANDLER) revert NotEmergencyHandler();
+        emit EmergencyWithdraw(to);
+        UNDERLYING_TOKEN.safeTransferAll(to);
+        BILL_TOKEN.safeTransferAll(to);
     }
 
     // ================ View Methods =================

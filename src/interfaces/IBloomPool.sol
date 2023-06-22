@@ -42,6 +42,8 @@ interface IBloomPool {
 
     error InvalidState(State current);
 
+    error NotEmergencyHandler();
+
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
     event LenderCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
     event BorrowerCommitmentProcessed(
@@ -53,8 +55,8 @@ interface IBloomPool {
     event ExplictStateTransition(State prevState, State newState);
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
-    event BorrowerEmergencyWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
-    event LenderEmergencyWithdraw(address indexed owner, uint256 amount);
+
+    event EmergencyWithdraw(address indexed to);
 
     /// @notice Initiates the pre-hold swap.
     function initiatePreHoldSwap() external;
@@ -100,20 +102,6 @@ interface IBloomPool {
      * @param shares The number of lender shares to withdraw.
      */
     function withdrawLender(uint256 shares) external;
-
-    /**
-     * @notice Allows borrowers to withdraw their original deposit should the pre-hold swap not be
-     * completed before the timeout.
-     * @param id The borrower's commitment ID.
-     */
-    function emergencyWithdrawBorrow(uint256 id) external;
-
-    /**
-     * @notice Allows lenders to withdraw their original deposit should the pre-hold swap not be
-     * completed before the timeout.
-     * @param shares The number of lender shares to withdraw.
-     */
-    function emergencyWithdrawLender(uint256 shares) external;
 
     function UNDERLYING_TOKEN() external view returns (address);
     function BILL_TOKEN() external view returns (address);

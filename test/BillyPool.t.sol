@@ -69,6 +69,7 @@ contract BloomPoolTest is Test {
             swapFacility: address(swap),
             treasury: treasury,
             leverageBps: 4 * BPS,
+            emergencyHandler: address(0),
             minBorrowDeposit: 100.0e18,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             preHoldSwapTimeout: 7 days,
