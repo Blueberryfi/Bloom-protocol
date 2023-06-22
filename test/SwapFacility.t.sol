@@ -46,11 +46,11 @@ contract SwapFacilityTest is Test {
     event Swap(address inToken, address outToken, uint256 inAmount, uint256 outAmount, address indexed user);
 
     function setUp() public {
-        stableToken = new MockERC20();
+        stableToken = new MockERC20(6);
         vm.label(address(stableToken), "StableToken");
-        billyToken = new MockERC20();
+        billyToken = new MockERC20(18);
         vm.label(address(billyToken), "BillyToken");
-        randomToken = new MockERC20();
+        randomToken = new MockERC20(18);
         vm.label(address(randomToken), "RandomToken");
         usdcOracle = new MockOracle();
         vm.label(address(usdcOracle), "StableTokenOracle");

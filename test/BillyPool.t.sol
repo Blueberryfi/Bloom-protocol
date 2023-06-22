@@ -52,9 +52,9 @@ contract BloomPoolTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     function setUp() public {
-        stableToken = new MockERC20();
+        stableToken = new MockERC20(6);
         vm.label(address(stableToken), "StableToken");
-        billyToken = new MockERC20();
+        billyToken = new MockERC20(18);
         vm.label(address(billyToken), "BillyToken");
         whitelist = new MockWhitelist();
         swap = new MockSwapFacility(stableToken, billyToken);
