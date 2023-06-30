@@ -9,3 +9,11 @@ via_ir = true
 runs = 10000
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+[rpc_endpoints]
+goerli = "${GOERLI_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
+
+[etherscan]
+goerli = { key = "${ETHERSCAN_KEY}"}
+sepolia = { key = "${ETHERSCAN_KEY}"}
