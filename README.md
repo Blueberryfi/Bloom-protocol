@@ -25,8 +25,8 @@ The constructor of the contract allows for easy deployment of new Billy pools.
 - `uint256 minBorrowerDeposit`: The minimum amount of tokens a borrower can Deposit to open up an order to be matched. 
 - `uint256 commitPhaseDuration`: How much time users should have to commit as borrowers/lenders from contract deployment.
 - `uint256 poolPhaseDuration`: How long the pool should hold the treasuries before swapping back and
-  allowing people to withdraw, **highly recommended** to set this to the maturity length of the
-  underlying treasuries as the pool has no liquidation mechanism.
+  allowing people to withdraw.
+  allowing people to withdraw.
 - `uint256 lenderReturnBps`: The fixed return lenders are to receive in basis points e.g. `10000`
   means lenders will receive 100% of their capital back (0% return), `10030` would
   represent 103% or a 3% yield.
@@ -86,10 +86,9 @@ The contract has several states and transitions between them based on the curren
 ### Swap Facility
 
 The swap facility is required to swap the `UNDERLYING_TOKEN` to and from the `BILL_TOKEN`. The swap
-facility is completely trusted by the associated pool contract, the pool does not check or enforce
+facility is completely trusted by the associated pool contract, the pool contract does not check or enforce
 any slippage on the swap result. Swaps do not have to occur atomically in one transaction, but can
-be settled at a later point in a separate call. Meaning any critical such as the aforementioned
-slippage checks must be performed by the swap facility.
+be settled at a later point in a separate call.
 
 The swap facility implements the `swap` method from the [`ISwapFacility`](src/interfaces/ISwapFacility.sol)
 interface and call the pool's `completeSwap` method from the [`ISwapRecipient`](src/interfaces/ISwapRecipient.sol)
