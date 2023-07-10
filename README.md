@@ -1,5 +1,5 @@
 # The Bloom Pool Protocol
-By Composable Corp
+By Blueberry Protocol
 
 ## The [`BloomPool`](src/BloomPool.sol) Contract
 
