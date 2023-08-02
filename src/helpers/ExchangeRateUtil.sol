@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import { Address } from "oz/utils/Address.sol";
+import { Address } from "openzeppelin-contracts/contracts/utils/Address.sol";
 
 /**
  * @title ExchangeRateUtil

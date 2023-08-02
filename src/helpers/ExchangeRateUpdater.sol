@@ -16,9 +16,9 @@ contract ExchangeRateUpdater is RateLimit {
     address public tokenContract;
 
     /**
-     * @dev Indicates that the contract has been initialized
+     * @dev Indicates that the contract has been _initialized
      */
-    bool internal initialized;
+    bool internal _initialized;
 
     /**
      * @notice Emitted when exchange rate is updated
