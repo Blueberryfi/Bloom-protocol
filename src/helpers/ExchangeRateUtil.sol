@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import { Address } from "openzeppelin-contracts/contracts/utils/Address.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 
 /**
  * @title ExchangeRateUtil
@@ -10,12 +10,10 @@ import { Address } from "openzeppelin-contracts/contracts/utils/Address.sol";
 library ExchangeRateUtil {
     using Address for address;
 
-    bytes4 private constant _EXCHANGE_RATE_GETTER_SELECTOR = bytes4(
-        keccak256("exchangeRate()")
-    );
-    bytes4 private constant _EXCHANGE_RATE_UPDATER_SELECTOR = bytes4(
-        keccak256("updateExchangeRate(uint256)")
-    );
+    bytes4 private constant _EXCHANGE_RATE_GETTER_SELECTOR =
+        bytes4(keccak256("exchangeRate()"));
+    bytes4 private constant _EXCHANGE_RATE_UPDATER_SELECTOR =
+        bytes4(keccak256("updateExchangeRate(uint256)"));
 
     /**
      * @dev Updates the given token contract's exchange rate
@@ -41,11 +39,9 @@ library ExchangeRateUtil {
      * @param tokenContract Token contract address
      * @return The exchange rate read from the given token contract
      */
-    function safeGetExchangeRate(address tokenContract)
-        internal
-        view
-        returns (uint256)
-    {
+    function safeGetExchangeRate(
+        address tokenContract
+    ) internal view returns (uint256) {
         bytes memory data = abi.encodePacked(_EXCHANGE_RATE_GETTER_SELECTOR);
         bytes memory returnData = tokenContract.functionStaticCall(
             data,

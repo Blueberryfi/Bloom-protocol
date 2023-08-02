@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import { RateLimit } from "./RateLimit.sol";
-import { ExchangeRateUtil } from "./ExchangeRateUtil.sol";
+import {RateLimit} from "./RateLimit.sol";
+import {ExchangeRateUtil} from "./ExchangeRateUtil.sol";
 
 /**
  * @title ExchangeRateUpdater
@@ -34,12 +34,12 @@ contract ExchangeRateUpdater is RateLimit {
      * @param newOwner The address of the new owner of the exchange rate updater contract, can either be an EOA or a contract
      * @param newTokenContract The address of the token contract whose exchange rate is updated
      */
-    function initialize(address newOwner, address newTokenContract)
-        external
-        onlyOwner
-    {
+    function initialize(
+        address newOwner,
+        address newTokenContract
+    ) external onlyOwner {
         require(
-            !initialized,
+            !_initialized,
             "ExchangeRateUpdater: contract is already initialized"
         );
         require(
@@ -52,7 +52,7 @@ contract ExchangeRateUpdater is RateLimit {
         );
         transferOwnership(newOwner);
         tokenContract = newTokenContract;
-        initialized = true;
+        _initialized = true;
     }
 
     /**
@@ -60,11 +60,9 @@ contract ExchangeRateUpdater is RateLimit {
      * @param _newExchangeRate The new exchange rate. Must be less than or equal
      * to the allowance of the caller.
      */
-    function updateExchangeRate(uint256 _newExchangeRate)
-        public
-        virtual
-        onlyCallers
-    {
+    function updateExchangeRate(
+        uint256 _newExchangeRate
+    ) public virtual onlyCallers {
         require(
             _newExchangeRate > 0,
             "ExchangeRateUpdater: new exchange rate must be greater than 0"
