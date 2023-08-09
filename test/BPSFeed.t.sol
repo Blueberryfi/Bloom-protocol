@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 
 import {BPSFeed} from "src/BPSFeed.sol";
+import {TBYRateProvider} from "src/TBYRateProvider.sol";
 
 contract BPSFeedTest is Test {
     BPSFeed internal feed;
@@ -24,6 +25,8 @@ contract BPSFeedTest is Test {
     uint256 internal duration1 = 10 days;
     uint256 internal rate2 = 250;
     uint256 internal duration2 = 6 days;
+    uint256 internal rate3 = 100e8; // $100 IB01/USD via Chainlink Oracle 
+    uint256 internal duration3 = 5 days;
 
     function setUp() public {
         vm.prank(owner);
@@ -105,5 +108,20 @@ contract BPSFeedTest is Test {
         assertEq(feed.lastTimestamp(), lastTimestamp);
 
         vm.stopPrank();
+    }
+
+    function testTBYRateProviderGetRate() public {
+        assertEq(feed.currentRate(), 0);
+
+        vm.startPrank(owner);
+
+        TBYRateProvider rateprovider = new TBYRateProvider(feed);
+        feed.updateRate(rate3);
+        skip(duration3);
+
+        emit log_named_uint("Rate", rate3);
+        emit log_named_uint("getRate", rateprovider.getRate());
+
+        assertEq(rateprovider.getRate(), 100e18);
     }
 }
