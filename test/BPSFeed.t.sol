@@ -119,9 +119,6 @@ contract BPSFeedTest is Test {
         feed.updateRate(rate3);
         skip(duration3);
 
-        emit log_named_uint("Rate", rate3);
-        emit log_named_uint("getRate", rateprovider.getRate());
-
         assertEq(rateprovider.getRate(), 100e18);
     }
 }
