@@ -6,14 +6,15 @@ import "../interfaces/IRateProvider.sol";
 import {ExchangeRateUtil} from "./ExchangeRateUtil.sol";
 
 /**
- * @title Bloom TBY interface to return exchangeRate
+ * @title Bloom Registry interface to return exchangeRate
  */
-interface ITBY {
+interface IRegistry {
     /**
-     * @notice get exchange rate
-     * @return Returns the current exchange rate scaled by by 10**18
+     * @notice Returns the current exchange rate of the given token
+     * @param token The token address
+     * @return The current exchange rate of the given token
      */
-    function exchangeRate() external view returns (uint256);
+    function getExchangeRate(address token) external view returns (uint256);
 }
 
 /**
@@ -24,30 +25,33 @@ interface ITBY {
  * in the future.
  */
 contract TBYRateProvider is IRateProvider {
-    ITBY public immutable TBY;
+    IRegistry public immutable registry;
 
-    constructor(ITBY _TBY) {
-        TBY = _TBY;
+    address public immutable tby;
+
+    constructor(IRegistry _registry, address _tby) {
+        registry = _registry;
+        tby = _tby;
     }
 
     /**
      * @return address of TBY
      */
     function getTBYAddress() public view returns (address) {
-        return address(TBY);
+        return tby;
     }
 
     /**
      * @return value of TBY in terms of USD scaled by 10**18
      */
     function getRate() public view override returns (uint256) {
-        return TBY.exchangeRate();
+        return registry.getExchangeRate(tby);
     }
 
     /**
      * @return value of TBY in terms of USD scaled by 10**18
      */
     function getExchangeRate() public view override returns (uint256) {
-        return ExchangeRateUtil.safeGetExchangeRate(address(TBY));
+        return ExchangeRateUtil.safeGetExchangeRate(tby);
     }
 }
