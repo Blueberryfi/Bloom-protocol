@@ -164,14 +164,14 @@ contract ExchangeRateRegistry is RateLimit {
     /**
      * @notice Return list of active tokens
      */
-    function getActiveTokens() external view returns (address[] memory) {
+    function getActiveTokens() public view returns (address[] memory) {
         return _activeTokens.values();
     }
 
     /**
      * @notice Return list of inactive tokens
      */
-    function getInactiveTokens() external view returns (address[] memory) {
+    function getInactiveTokens() public view returns (address[] memory) {
         return _inactiveTokens.values();
     }
 
@@ -217,6 +217,57 @@ contract ExchangeRateRegistry is RateLimit {
         allowances[msg.sender] = allowances[msg.sender] - exchangeRateChange;
 
         emit ExchangeRateUpdated(msg.sender, token, addition, subtraction);
+    }
+
+    /**
+     * @notice Update exchange rate for all active tokens
+     * @param addition The addition value to the exchange rate
+     * @param subtraction The subtraction value to the exchange rate
+     */
+    function updateExchangeRateForAll(
+        uint256 addition,
+        uint256 subtraction
+    ) external onlyCallers {
+        address[] memory tokens = getActiveTokens();
+        uint256 tokensLength = tokens.length;
+
+        require(addition + subtraction > 0, "ExchangeRateRegistry: both zero");
+        require(
+            addition == 0 || subtraction == 0,
+            "ExchangeRateRegistry: both non-zero"
+        );
+
+        uint256 exchangeRateChange;
+        if (addition > 0) {
+            exchangeRateChange = addition;
+        } else {
+            exchangeRateChange = subtraction;
+        }
+
+        require(
+            exchangeRateChange < maxChange,
+            "ExchangeRateRegistry: exchange rate change exceeds limit"
+        );
+
+        uint256 totalChange = exchangeRateChange * tokensLength;
+        require(
+            totalChange <= allowances[msg.sender],
+            "ExchangeRateRegistry: exchange rate update exceeds allowance"
+        );
+
+        allowances[msg.sender] = allowances[msg.sender] - totalChange;
+
+        for (uint256 i; i != tokensLength; ++i) {
+            address token = tokens[i];
+            TokenInfo storage info = tokenInfos[token];
+            if (addition > 0) {
+                info.exchangeRate += addition;
+            } else {
+                info.exchangeRate -= subtraction;
+            }
+
+            emit ExchangeRateUpdated(msg.sender, token, addition, subtraction);
+        }
     }
 
     /**
