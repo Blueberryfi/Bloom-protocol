@@ -133,4 +133,16 @@ contract ExchangeRateRegistry is RateLimit {
 
         emit ExchangeRateUpdated(msg.sender, token, addition, subtraction);
     }
+
+    /**
+     * @notice Returns the current exchange rate of the given token
+     * @param token The token address
+     * @return The current exchange rate of the given token
+     */
+    function getExchangeRate(address token) external view returns (uint256) {
+        TokenInfo storage info = tokenInfos[token];
+        require(info.registered, "token not registered");
+
+        return info.exchangeRate;
+    }
 }
