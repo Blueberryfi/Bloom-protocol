@@ -2,12 +2,15 @@
 pragma solidity 0.8.19;
 
 import {RateLimit} from "./RateLimit.sol";
+import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * @title ExchangeRateRegistry
  * @notice Manage tokens and exchange rates
  */
 contract ExchangeRateRegistry is RateLimit {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     struct TokenInfo {
         bool registered;
         bool active;
@@ -21,9 +24,24 @@ contract ExchangeRateRegistry is RateLimit {
     mapping(address => TokenInfo) public tokenInfos;
 
     /**
+     * @dev Group of active tokens
+     */
+    EnumerableSet.AddressSet internal _activeTokens;
+
+    /**
+     * @dev Group of inactive tokens
+     */
+    EnumerableSet.AddressSet internal _inactiveTokens;
+
+    /**
      * @dev Indicates that the contract has been _initialized
      */
     bool internal _initialized;
+
+    /**
+     * @notice The maximum change value of the exchange rate
+     */
+    uint256 public maxChange;
 
     /**
      * @notice Emitted when token is registered
@@ -31,6 +49,12 @@ contract ExchangeRateRegistry is RateLimit {
      * @param createdAt Timestamp of the token creation
      */
     event TokenRegistered(address token, uint256 createdAt);
+
+    /**
+     * @notice Emitted when token is activated
+     * @param token The token address
+     */
+    event TokenActivated(address token);
 
     /**
      * @notice Emitted when token is inactivated
@@ -58,16 +82,24 @@ contract ExchangeRateRegistry is RateLimit {
      * @dev The caller is responsible for ensuring that both the new owner and the token contract are configured correctly
      * @param newOwner The address of the new owner of the exchange rate updater contract, can either be an EOA or a contract
      */
-    function initialize(address newOwner) external onlyOwner {
+    function initialize(
+        address newOwner,
+        uint256 newMaxChange
+    ) external onlyOwner {
         require(
             !_initialized,
-            "ExchangeRateUpdater: contract is already initialized"
+            "ExchangeRateRegistry: contract is already initialized"
         );
         require(
             newOwner != address(0),
-            "ExchangeRateUpdater: owner is the zero address"
+            "ExchangeRateRegistry: owner is the zero address"
+        );
+        require(
+            newMaxChange != 0,
+            "ExchangeRateRegistry: maxChange is the zero"
         );
         transferOwnership(newOwner);
+        maxChange = newMaxChange;
         _initialized = true;
     }
 
@@ -81,14 +113,36 @@ contract ExchangeRateRegistry is RateLimit {
         uint256 createdAt
     ) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
-        require(!info.registered, "token already registered");
+        require(
+            !info.registered,
+            "ExchangeRateRegistry: token already registered"
+        );
 
         info.registered = true;
         info.active = true;
         info.createdAt = createdAt;
         info.exchangeRate = 1e18; // starting exchange rate
 
+        _activeTokens.add(token);
+
         emit TokenRegistered(token, createdAt);
+    }
+
+    /**
+     * @notice Activate the token
+     * @param token The token address to activate
+     */
+    function activateToken(address token) external onlyOwner {
+        TokenInfo storage info = tokenInfos[token];
+        require(info.registered, "ExchangeRateRegistry: token not registered");
+        require(!info.active, "ExchangeRateRegistry: token is active");
+
+        info.active = true;
+
+        _activeTokens.add(token);
+        _inactiveTokens.remove(token);
+
+        emit TokenActivated(token);
     }
 
     /**
@@ -97,23 +151,49 @@ contract ExchangeRateRegistry is RateLimit {
      */
     function inactivateToken(address token) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
-        require(info.active, "token is inactive");
+        require(info.active, "ExchangeRateRegistry: token is inactive");
 
         info.active = false;
+
+        _activeTokens.remove(token);
+        _inactiveTokens.add(token);
 
         emit TokenInactivated(token);
     }
 
+    /**
+     * @notice Return list of active tokens
+     */
+    function getActiveTokens() external view returns (address[] memory) {
+        return _activeTokens.values();
+    }
+
+    /**
+     * @notice Return list of inactive tokens
+     */
+    function getInactiveTokens() external view returns (address[] memory) {
+        return _inactiveTokens.values();
+    }
+
+    /**
+     * @notice Update exchange rate for token
+     * @param token The token address to update exchange rate for
+     * @param addition The addition value to the exchange rate
+     * @param subtraction The subtraction value to the exchange rate
+     */
     function updateExchangeRate(
         address token,
         uint256 addition,
         uint256 subtraction
     ) external onlyCallers {
         TokenInfo storage info = tokenInfos[token];
-        require(info.active, "token is inactive");
+        require(info.active, "ExchangeRateRegistry: token is inactive");
 
-        require(addition + subtraction > 0, "both zero");
-        require(addition == 0 || subtraction == 0, "both non-zero");
+        require(addition + subtraction > 0, "ExchangeRateRegistry: both zero");
+        require(
+            addition == 0 || subtraction == 0,
+            "ExchangeRateRegistry: both non-zero"
+        );
 
         uint256 exchangeRateChange;
         if (addition > 0) {
@@ -125,8 +205,13 @@ contract ExchangeRateRegistry is RateLimit {
         }
 
         require(
+            exchangeRateChange < maxChange,
+            "ExchangeRateRegistry: exchange rate change exceeds limit"
+        );
+
+        require(
             exchangeRateChange <= allowances[msg.sender],
-            "ExchangeRateUpdater: exchange rate update exceeds allowance"
+            "ExchangeRateRegistry: exchange rate update exceeds allowance"
         );
 
         allowances[msg.sender] = allowances[msg.sender] - exchangeRateChange;
@@ -141,7 +226,7 @@ contract ExchangeRateRegistry is RateLimit {
      */
     function getExchangeRate(address token) external view returns (uint256) {
         TokenInfo storage info = tokenInfos[token];
-        require(info.registered, "token not registered");
+        require(info.registered, "ExchangeRateRegistry: token not registered");
 
         return info.exchangeRate;
     }
