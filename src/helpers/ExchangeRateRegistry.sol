@@ -1,12 +1,25 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+/*
+██████╗░██╗░░░░░░█████╗░░█████╗░███╗░░░███╗
+██╔══██╗██║░░░░░██╔══██╗██╔══██╗████╗░████║
+██████╦╝██║░░░░░██║░░██║██║░░██║██╔████╔██║
+██╔══██╗██║░░░░░██║░░██║██║░░██║██║╚██╔╝██║
+██████╦╝███████╗╚█████╔╝╚█████╔╝██║░╚═╝░██║
+╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
+*/
+
 pragma solidity 0.8.19;
 
-import {RateLimit} from "./RateLimit.sol";
+import "./RateLimit.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * @title ExchangeRateRegistry
  * @notice Manage tokens and exchange rates
+ * @dev This contract stores:
+    * 1. Address of all TBYs
+    * 2. Exchange rate of each TBY
+    * 3. If TBY is active or not
  */
 contract ExchangeRateRegistry is RateLimit {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -249,7 +262,7 @@ contract ExchangeRateRegistry is RateLimit {
             "ExchangeRateRegistry: exchange rate change exceeds limit"
         );
 
-        uint256 totalChange = exchangeRateChange * tokensLength;
+        uint256 totalChange = exchangeRateChange;
         require(
             totalChange <= allowances[msg.sender],
             "ExchangeRateRegistry: exchange rate update exceeds allowance"

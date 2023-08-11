@@ -1,9 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+/*
+██████╗░██╗░░░░░░█████╗░░█████╗░███╗░░░███╗
+██╔══██╗██║░░░░░██╔══██╗██╔══██╗████╗░████║
+██████╦╝██║░░░░░██║░░██║██║░░██║██╔████╔██║
+██╔══██╗██║░░░░░██║░░██║██║░░██║██║╚██╔╝██║
+██████╦╝███████╗╚█████╔╝╚█████╔╝██║░╚═╝░██║
+╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
+*/
 
 pragma solidity 0.8.19;
 
 import "../interfaces/IRateProvider.sol";
-import {ExchangeRateUtil} from "./ExchangeRateUtil.sol";
+import "./ExchangeRateRegistry.sol";
 
 /**
  * @title Bloom Registry interface to return exchangeRate
@@ -42,16 +50,10 @@ contract TBYRateProvider is IRateProvider {
     }
 
     /**
-     * @return value of TBY in terms of USD scaled by 10**18
+     * @return value of TBY in terms of USD returns an 18 decimal number
      */
     function getRate() public view override returns (uint256) {
         return registry.getExchangeRate(tby);
     }
 
-    /**
-     * @return value of TBY in terms of USD scaled by 10**18
-     */
-    function getExchangeRate() public view override returns (uint256) {
-        return ExchangeRateUtil.safeGetExchangeRate(tby);
-    }
 }

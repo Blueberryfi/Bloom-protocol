@@ -1,10 +1,20 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
+/*
+██████╗░██╗░░░░░░█████╗░░█████╗░███╗░░░███╗
+██╔══██╗██║░░░░░██╔══██╗██╔══██╗████╗░████║
+██████╦╝██║░░░░░██║░░██║██║░░██║██╔████╔██║
+██╔══██╗██║░░░░░██║░░██║██║░░██║██║╚██╔╝██║
+██████╦╝███████╗╚█████╔╝╚█████╔╝██║░╚═╝░██║
+╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
+*/
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
-// TODO: pull this from the monorepo
 interface IRateProvider {
+    /**
+     * @dev Returns an 18 decimal fixed point number that is the exchange rate of the token to some other underlying
+     * token. The meaning of this rate depends on the context.
+     * https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/interfaces/contracts/pool-utils/IRateProvider.sol
+     */
     function getRate() external view returns (uint256);
-
-    function getExchangeRate() external view returns (uint256);
 }
