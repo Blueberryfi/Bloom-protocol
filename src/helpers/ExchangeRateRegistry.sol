@@ -36,6 +36,7 @@ contract ExchangeRateRegistry is Ownable {
         bool active;
         address pool;
         uint256 createdAt;
+        uint256 exchangeRate;
     }
 
     /**
@@ -190,11 +191,55 @@ contract ExchangeRateRegistry is Ownable {
     }
 
     /**
+     * @notice Update the exchange rate for the given token
+     * @param token The token address
+     */
+    function updateExchangeRate(address token) external onlyOwner {
+        _updateExchangeRate(token);
+    }
+
+    /**
+     * @notice Update the exchange rate for all active tokens
+     */
+    function updateExchangeRateForAll() external onlyOwner {
+        address[] memory activeTokens = _activeTokens.values();
+
+        uint256 length = activeTokens.length;
+        for (uint256 i; i != length; ++i) {
+            _updateExchangeRate(activeTokens[i]);
+        }
+    }
+
+    function _updateExchangeRate(address token) internal {
+        TokenInfo storage info = tokenInfos[token];
+
+        uint256 exchangeRate = _getExchangeRate(token);
+
+        info.exchangeRate = exchangeRate;
+    }
+
+    /**
+     * @notice Returns the most recent updated exchange rate of the given token
+     * @param token The token address
+     * @return The most recent updated exchange rate of the given token
+     */
+    function getRecentRate(address token) external view returns (uint256) {
+        TokenInfo storage info = tokenInfos[token];
+        require(info.registered, "ExchangeRateRegistry: token not registered");
+
+        return info.exchangeRate;
+    }
+
+    /**
      * @notice Returns the current exchange rate of the given token
      * @param token The token address
      * @return The current exchange rate of the given token
      */
     function getExchangeRate(address token) external view returns (uint256) {
+        return _getExchangeRate(token);
+    }
+
+    function _getExchangeRate(address token) internal view returns (uint256) {
         TokenInfo storage info = tokenInfos[token];
         require(info.registered, "ExchangeRateRegistry: token not registered");
 
