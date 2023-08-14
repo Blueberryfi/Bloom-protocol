@@ -10,25 +10,32 @@
 
 pragma solidity 0.8.19;
 
-import "./RateLimit.sol";
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
+
+import "../interfaces/IBPSFeed.sol";
+import "../interfaces/IBloomPool.sol";
 
 /**
  * @title ExchangeRateRegistry
  * @notice Manage tokens and exchange rates
  * @dev This contract stores:
-    * 1. Address of all TBYs
-    * 2. Exchange rate of each TBY
-    * 3. If TBY is active or not
+ * 1. Address of all TBYs
+ * 2. Exchange rate of each TBY
+ * 3. If TBY is active or not
  */
-contract ExchangeRateRegistry is RateLimit {
+contract ExchangeRateRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    uint256 public constant BASE_RATE = 1e18;
+    uint256 public constant ONE_YEAR = 365 days;
+    uint256 public constant BPS = 1e4;
 
     struct TokenInfo {
         bool registered;
         bool active;
+        address pool;
         uint256 createdAt;
-        uint256 exchangeRate;
     }
 
     /**
@@ -52,16 +59,16 @@ contract ExchangeRateRegistry is RateLimit {
     bool internal _initialized;
 
     /**
-     * @notice The maximum change value of the exchange rate
-     */
-    uint256 public maxChange;
-
-    /**
      * @notice Emitted when token is registered
      * @param token The token address to register
+     * @param pool The pool associated with the token
      * @param createdAt Timestamp of the token creation
      */
-    event TokenRegistered(address token, uint256 createdAt);
+    event TokenRegistered(
+        address indexed token,
+        address pool,
+        uint256 createdAt
+    );
 
     /**
      * @notice Emitted when token is activated
@@ -95,10 +102,7 @@ contract ExchangeRateRegistry is RateLimit {
      * @dev The caller is responsible for ensuring that both the new owner and the token contract are configured correctly
      * @param newOwner The address of the new owner of the exchange rate updater contract, can either be an EOA or a contract
      */
-    function initialize(
-        address newOwner,
-        uint256 newMaxChange
-    ) external onlyOwner {
+    function initialize(address newOwner) external onlyOwner {
         require(
             !_initialized,
             "ExchangeRateRegistry: contract is already initialized"
@@ -107,22 +111,19 @@ contract ExchangeRateRegistry is RateLimit {
             newOwner != address(0),
             "ExchangeRateRegistry: owner is the zero address"
         );
-        require(
-            newMaxChange != 0,
-            "ExchangeRateRegistry: maxChange is the zero"
-        );
         transferOwnership(newOwner);
-        maxChange = newMaxChange;
         _initialized = true;
     }
 
     /**
      * @notice Register new token to the registry
      * @param token The token address to register
+     * @param pool The pool associated with the token
      * @param createdAt Timestamp of the token creation
      */
     function registerToken(
         address token,
+        address pool,
         uint256 createdAt
     ) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
@@ -133,12 +134,12 @@ contract ExchangeRateRegistry is RateLimit {
 
         info.registered = true;
         info.active = true;
+        info.pool = pool;
         info.createdAt = createdAt;
-        info.exchangeRate = 1e18; // starting exchange rate
 
         _activeTokens.add(token);
 
-        emit TokenRegistered(token, createdAt);
+        emit TokenRegistered(token, pool, createdAt);
     }
 
     /**
@@ -177,110 +178,15 @@ contract ExchangeRateRegistry is RateLimit {
     /**
      * @notice Return list of active tokens
      */
-    function getActiveTokens() public view returns (address[] memory) {
+    function getActiveTokens() external view returns (address[] memory) {
         return _activeTokens.values();
     }
 
     /**
      * @notice Return list of inactive tokens
      */
-    function getInactiveTokens() public view returns (address[] memory) {
+    function getInactiveTokens() external view returns (address[] memory) {
         return _inactiveTokens.values();
-    }
-
-    /**
-     * @notice Update exchange rate for token
-     * @param token The token address to update exchange rate for
-     * @param addition The addition value to the exchange rate
-     * @param subtraction The subtraction value to the exchange rate
-     */
-    function updateExchangeRate(
-        address token,
-        uint256 addition,
-        uint256 subtraction
-    ) external onlyCallers {
-        TokenInfo storage info = tokenInfos[token];
-        require(info.active, "ExchangeRateRegistry: token is inactive");
-
-        require(addition + subtraction > 0, "ExchangeRateRegistry: both zero");
-        require(
-            addition == 0 || subtraction == 0,
-            "ExchangeRateRegistry: both non-zero"
-        );
-
-        uint256 exchangeRateChange;
-        if (addition > 0) {
-            exchangeRateChange = addition;
-            info.exchangeRate += addition;
-        } else {
-            exchangeRateChange = subtraction;
-            info.exchangeRate -= subtraction;
-        }
-
-        require(
-            exchangeRateChange < maxChange,
-            "ExchangeRateRegistry: exchange rate change exceeds limit"
-        );
-
-        require(
-            exchangeRateChange <= allowances[msg.sender],
-            "ExchangeRateRegistry: exchange rate update exceeds allowance"
-        );
-
-        allowances[msg.sender] = allowances[msg.sender] - exchangeRateChange;
-
-        emit ExchangeRateUpdated(msg.sender, token, addition, subtraction);
-    }
-
-    /**
-     * @notice Update exchange rate for all active tokens
-     * @param addition The addition value to the exchange rate
-     * @param subtraction The subtraction value to the exchange rate
-     */
-    function updateExchangeRateForAll(
-        uint256 addition,
-        uint256 subtraction
-    ) external onlyCallers {
-        address[] memory tokens = getActiveTokens();
-        uint256 tokensLength = tokens.length;
-
-        require(addition + subtraction > 0, "ExchangeRateRegistry: both zero");
-        require(
-            addition == 0 || subtraction == 0,
-            "ExchangeRateRegistry: both non-zero"
-        );
-
-        uint256 exchangeRateChange;
-        if (addition > 0) {
-            exchangeRateChange = addition;
-        } else {
-            exchangeRateChange = subtraction;
-        }
-
-        require(
-            exchangeRateChange < maxChange,
-            "ExchangeRateRegistry: exchange rate change exceeds limit"
-        );
-
-        uint256 totalChange = exchangeRateChange;
-        require(
-            totalChange <= allowances[msg.sender],
-            "ExchangeRateRegistry: exchange rate update exceeds allowance"
-        );
-
-        allowances[msg.sender] = allowances[msg.sender] - totalChange;
-
-        for (uint256 i; i != tokensLength; ++i) {
-            address token = tokens[i];
-            TokenInfo storage info = tokenInfos[token];
-            if (addition > 0) {
-                info.exchangeRate += addition;
-            } else {
-                info.exchangeRate -= subtraction;
-            }
-
-            emit ExchangeRateUpdated(msg.sender, token, addition, subtraction);
-        }
     }
 
     /**
@@ -292,6 +198,20 @@ contract ExchangeRateRegistry is RateLimit {
         TokenInfo storage info = tokenInfos[token];
         require(info.registered, "ExchangeRateRegistry: token not registered");
 
-        return info.exchangeRate;
+        IBloomPool pool = IBloomPool(info.pool);
+        uint256 lenderFee = pool.LENDER_RETURN_FEE();
+        uint256 duration = pool.POOL_PHASE_DURATION();
+        IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
+
+        uint256 rate = bpsFeed.getWeightedRate();
+        uint256 timeElapsed = block.timestamp - info.createdAt;
+        if (timeElapsed > duration) {
+            timeElapsed = duration;
+        }
+        uint256 delta = (rate * (BPS - lenderFee) * timeElapsed) /
+            ONE_YEAR /
+            BPS;
+
+        return BASE_RATE + delta * BASE_RATE / BPS;
     }
 }
