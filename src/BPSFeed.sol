@@ -41,7 +41,7 @@ contract BPSFeed is IBPSFeed, Owned {
 
     /// @inheritdoc IBPSFeed
     function updateRate(uint256 _rate) external onlyOwner {
-        if (_rate < INITIAL_RATE || _rate > currentRate) { 
+        if (_rate < INITIAL_RATE) { 
             revert InvalidRate();
         }
         if (lastTimestamp > 0) {
