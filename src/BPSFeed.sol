@@ -41,7 +41,7 @@ contract BPSFeed is IBPSFeed, Owned {
 
     /// @inheritdoc IBPSFeed
     function updateRate(uint256 _rate) external onlyOwner {
-        if (_rate < INITIAL_RATE || _rate > MAX_RATE) { 
+        if (_rate < INITIAL_RATE || _rate > MAX_RATE) {
             revert InvalidRate();
         }
         if (lastTimestamp > 0) {
@@ -49,7 +49,6 @@ contract BPSFeed is IBPSFeed, Owned {
             _totalRate += currentRate * lastRateDuration;
             _totalDuration += lastRateDuration;
         }
-        
 
         currentRate = _rate;
         lastTimestamp = block.timestamp;

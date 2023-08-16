@@ -27,7 +27,6 @@ contract BPSFeedTest is Test {
     uint256 internal duration2 = 6 days;
     uint256 internal rate3 = 9030;
 
-
     function setUp() public {
         vm.prank(owner);
         feed = new BPSFeed();
@@ -51,7 +50,6 @@ contract BPSFeedTest is Test {
         vm.expectRevert(IBPSFeed.InvalidRate.selector);
         feed.updateRate(rate3);
     }
-
 
     function testGetWeightedRate() public {
         assertEq(feed.getWeightedRate(), 0);
