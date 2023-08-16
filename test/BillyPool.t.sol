@@ -335,7 +335,7 @@ contract BloomPoolTest is Test {
         swap.setRate(billPrice = 1.298e18);
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.ReadyPostHoldSwap, State.PendingPostHoldSwap);
-        pool.initiatePostHoldSwap();
+        pool.initiatePostHoldSwap(new bytes32[](0));
         assertEq(pool.state(), State.PendingPostHoldSwap);
 
         vm.expectEmit(true, true, true, true);
