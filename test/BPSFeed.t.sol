@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 
 import {BPSFeed} from "src/BPSFeed.sol";
+import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 
 contract BPSFeedTest is Test {
     BPSFeed internal feed;
@@ -20,10 +21,12 @@ contract BPSFeedTest is Test {
     address internal owner = makeAddr("owner");
     address internal nonOwner = makeAddr("nonOwner");
 
-    uint256 internal rate1 = 200;
+    uint256 internal rate1 = 10020;
     uint256 internal duration1 = 10 days;
-    uint256 internal rate2 = 250;
+    uint256 internal rate2 = 10025;
     uint256 internal duration2 = 6 days;
+    uint256 internal rate3 = 9030;
+    uint256 internal rate4 = 11111;
 
     function setUp() public {
         vm.prank(owner);
@@ -41,6 +44,18 @@ contract BPSFeedTest is Test {
     function testUpdateRate_success() public {
         vm.prank(owner);
         feed.updateRate(rate1);
+    }
+
+    function testUpdateRate_InvalidRateLow() public {
+        startHoax(owner);
+        vm.expectRevert(IBPSFeed.InvalidRate.selector);
+        feed.updateRate(rate3);
+    }
+
+    function testUpdateRate_InvalidRateHigh() public {
+        startHoax(owner);
+        vm.expectRevert(IBPSFeed.InvalidRate.selector);
+        feed.updateRate(rate4);
     }
 
     function testGetWeightedRate() public {
@@ -64,7 +79,7 @@ contract BPSFeedTest is Test {
     }
 
     function testGetCurrentRate() public {
-        assertEq(feed.currentRate(), 0);
+        assertEq(feed.currentRate(), 1e4);
 
         vm.startPrank(owner);
 
