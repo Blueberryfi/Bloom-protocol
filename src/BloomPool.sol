@@ -174,13 +174,13 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     /**
      * @inheritdoc IBloomPool
      */
-    function initiatePreHoldSwap() external onlyState(State.ReadyPreHoldSwap) {
+    function initiatePreHoldSwap(bytes32[] calldata proof) external onlyState(State.ReadyPreHoldSwap) {
         uint256 amountToSwap = totalMatchAmount() * (LEVERAGE_BPS + BPS) / LEVERAGE_BPS;
         // Reset allowance to zero before to ensure can always set for weird tokens like USDT.
         UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, 0);
         UNDERLYING_TOKEN.safeApprove(SWAP_FACILITY, amountToSwap);
         emit ExplictStateTransition(State.ReadyPreHoldSwap, setState = State.PendingPreHoldSwap);
-        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, new bytes32[](0));
+        ISwapFacility(SWAP_FACILITY).swap(UNDERLYING_TOKEN, BILL_TOKEN, amountToSwap, proof);
     }
 
     /**

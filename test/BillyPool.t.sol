@@ -313,7 +313,7 @@ contract BloomPoolTest is Test {
         swap.setRate(billPrice);
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.ReadyPreHoldSwap, State.PendingPreHoldSwap);
-        pool.initiatePreHoldSwap();
+        pool.initiatePreHoldSwap(new bytes32[](0));
         assertEq(pool.state(), State.PendingPreHoldSwap);
         assertEq(stableToken.balanceOf(address(pool)), unusedLendAmount);
 
