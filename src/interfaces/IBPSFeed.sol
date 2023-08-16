@@ -14,6 +14,8 @@ interface IBPSFeed {
 
     error InvalidRate();
 
+    event UpdateRate(uint256 currentRate);
+
     /// @notice Returns weighted rate
     function getWeightedRate() external view returns (uint256);
 
