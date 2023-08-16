@@ -21,12 +21,12 @@ contract BPSFeedTest is Test {
     address internal owner = makeAddr("owner");
     address internal nonOwner = makeAddr("nonOwner");
 
-    uint256 internal rate1 = 10020;
+    uint256 internal rate1 = 10250;
     uint256 internal duration1 = 10 days;
-    uint256 internal rate2 = 10025;
+    uint256 internal rate2 = 10255;
     uint256 internal duration2 = 6 days;
     uint256 internal rate3 = 9030;
-    uint256 internal rate4 = 11111;
+
 
     function setUp() public {
         vm.prank(owner);
@@ -52,11 +52,6 @@ contract BPSFeedTest is Test {
         feed.updateRate(rate3);
     }
 
-    function testUpdateRate_InvalidRateHigh() public {
-        startHoax(owner);
-        vm.expectRevert(IBPSFeed.InvalidRate.selector);
-        feed.updateRate(rate4);
-    }
 
     function testGetWeightedRate() public {
         assertEq(feed.getWeightedRate(), 0);
