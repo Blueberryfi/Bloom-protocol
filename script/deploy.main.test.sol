@@ -83,7 +83,7 @@ contract Deploy is Test, Script {
     }
 
     function _deploySwapFacility() internal {
-        uint256 deployerNonce = vm.getNonce(address(this));
+        uint256 deployerNonce = vm.getNonce(address(DEPLOYER));
 
         swap = new SwapFacility(
             UNDERLYING_TOKEN, 
