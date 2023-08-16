@@ -23,7 +23,6 @@ import {ISwapFacility} from "../src/interfaces/ISwapFacility.sol";
 import {IWhitelist} from "../src/interfaces/IWhitelist.sol";
 
 contract Deploy is Test, Script {
-    address internal constant DEPLOYER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
     address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
     address internal constant EMERGENCY_HANDLER = 0x989B1a8EefaC6bF66a159621D49FaF4A939b452D;
 
@@ -83,7 +82,7 @@ contract Deploy is Test, Script {
     }
 
     function _deploySwapFacility() internal {
-        uint256 deployerNonce = vm.getNonce(address(this));
+        uint256 deployerNonce = vm.getNonce(msg.sender);
 
         swap = new SwapFacility(
             UNDERLYING_TOKEN, 
@@ -92,7 +91,7 @@ contract Deploy is Test, Script {
             IB01USD,
             IWhitelist(address(whitelist)),
             SPREAD,
-            LibRLP.computeAddress(address(DEPLOYER), deployerNonce +1),
+            LibRLP.computeAddress(msg.sender, deployerNonce + 1),
             MIN_STABLE_VALUE,
             MAX_BILL_VALUE
         );

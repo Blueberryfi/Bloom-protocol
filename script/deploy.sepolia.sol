@@ -110,7 +110,7 @@ contract Deploy is Test, Script {
     // }
 
     function _deploySwapFacility() internal {
-        uint256 deployerNonce = vm.getNonce(address(DEPLOYER));
+        uint256 deployerNonce = vm.getNonce(msg.sender);
 
         swap = new SwapFacility(
             UNDERLYING_TOKEN,        // address(UNDERLYING_TOKEN), 
@@ -120,7 +120,7 @@ contract Deploy is Test, Script {
             // IWhitelist(address(WHITELIST)),         
             IWhitelist(address(whitelistSwap)),
             SPREAD,
-            LibRLP.computeAddress(address(DEPLOYER), deployerNonce +1),
+            LibRLP.computeAddress(msg.sender, deployerNonce +1),
             MIN_STABLE_VALUE,
             MAX_BILL_VALUE
         );
