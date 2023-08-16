@@ -61,7 +61,7 @@ interface IBloomPool {
     function initiatePreHoldSwap(bytes32[] calldata proof) external;
 
     /// @notice Initiates the post-hold swap.
-    function initiatePostHoldSwap() external;
+    function initiatePostHoldSwap(bytes32[] calldata proof) external;
 
     /**
      * @notice Deposits funds from the borrower committing them for the duration of the commit
