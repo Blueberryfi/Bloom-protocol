@@ -12,7 +12,6 @@ pragma solidity 0.8.19;
 
 import {IMockWhitelist} from "./interfaces/IMockWhitelist.sol";
 
-
 contract MockWhitelist is IMockWhitelist {
     mapping(address => bool) public includes;
 

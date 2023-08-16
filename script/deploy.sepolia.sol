@@ -29,7 +29,8 @@ contract Deploy is Test, Script {
     address internal constant EMERGENCY_HANDLER = 0x989B1a8EefaC6bF66a159621D49FaF4A939b452D;
 
     address internal constant UNDERLYING_TOKEN = 0xa1c511b3C5Be3C94089203845D6247D1696D7Fb9; //
-    address internal constant BILL_TOKEN = 0x106c5522A76818cEdf06E885E8a8A63eb6Cf2a4b; //bIB01
+    address internal constant BILL_TOKEN = 0x106c5522A76818cEdf06E885E8a8A63eb6Cf2a4b;
+    //bIB01
     // MockERC20 internal UNDERLYING_TOKEN;
     // MockERC20 internal BILL_TOKEN;
 
@@ -39,19 +40,19 @@ contract Deploy is Test, Script {
     // chainlink feeds
     address internal constant USDCUSD = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E;
     address internal constant IB01USD = 0xB677bfBc9B09a3469695f40477d05bc9BcB15F50;
-    
+
     bytes32 internal constant INITIALROOTBORROW = 0xabc6a38afc2e6c26bad45002703dd3bae47e41d24d13e71f8e61687633acc2ea;
     bytes32 internal constant INITIALROOTSWAP = 0xabc6a38afc2e6c26bad45002703dd3bae47e41d24d13e71f8e61687633acc2ea;
     address internal constant INITIALOWNER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
 
     uint256 internal constant SPREAD = 0.0125e4; // 0.125%
     uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
-    uint256 internal constant MAX_BILL_VALUE = 107.60e8;
+    uint256 internal constant MAX_BILL_VALUE = 107.6e8;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant commitPhaseDuration = 1 hours;
     uint256 internal constant poolPhaseDuration = 2 days;
     uint256 internal constant preHoldSwapTimeout = 7 days;
-    
+
     // Aux
     BPSFeed internal lenderReturnBpsFeed;
     MerkleWhitelist internal whitelistBorrow;
@@ -60,7 +61,6 @@ contract Deploy is Test, Script {
     // Protocol
     BloomPool internal pool;
     SwapFacility internal swap;
-    
 
     function run() public {
         vm.startBroadcast();
@@ -78,12 +78,12 @@ contract Deploy is Test, Script {
         vm.stopBroadcast();
     }
 
-   // function _deployBillyToken() internal {
-   //     UNDERLYING_TOKEN = new MockERC20(6);
-   //     vm.label(address(UNDERLYING_TOKEN), "UnderlyingToken");
-   //     BILL_TOKEN = new MockERC20(18);
-   //     vm.label(address(BILL_TOKEN), "BillyToken");
-   // }
+    // function _deployBillyToken() internal {
+    //     UNDERLYING_TOKEN = new MockERC20(6);
+    //     vm.label(address(UNDERLYING_TOKEN), "UnderlyingToken");
+    //     BILL_TOKEN = new MockERC20(18);
+    //     vm.label(address(BILL_TOKEN), "BillyToken");
+    // }
 
     function _deployMerkleWhitelistBorrow() internal {
         whitelistBorrow = new MerkleWhitelist(
@@ -92,26 +92,24 @@ contract Deploy is Test, Script {
         );
         vm.label(address(whitelistBorrow), "MerkleWhitelistBorrow");
         console2.log("MerkleWhitelist deployed at:", address(whitelistBorrow));
-        }
+    }
 
-        function _deployMerkleWhitelistSwap() internal {
+    function _deployMerkleWhitelistSwap() internal {
         whitelistSwap = new MerkleWhitelist(
             INITIALROOTSWAP,
             INITIALOWNER
         );
         vm.label(address(whitelistSwap), "MerkleWhitelistSwap");
         console2.log("MerkleWhitelist deployed at:", address(whitelistSwap));
-        }    
-    
-   //     function _deployBPSFeed() internal {
-   //     lenderReturnBpsFeed = new BPSFeed();
-   //     vm.label(address(lenderReturnBpsFeed), "BPSFeed");
-   //     console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
-   // }
-    
+    }
+
+    //     function _deployBPSFeed() internal {
+    //     lenderReturnBpsFeed = new BPSFeed();
+    //     vm.label(address(lenderReturnBpsFeed), "BPSFeed");
+    //     console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
+    // }
 
     function _deploySwapFacility() internal {
-
         uint256 deployerNonce = vm.getNonce(address(DEPLOYER));
 
         swap = new SwapFacility(
@@ -131,7 +129,6 @@ contract Deploy is Test, Script {
     }
 
     function _deployBloomPool() internal {
-
         pool = new BloomPool(
             UNDERLYING_TOKEN,    // address(UNDERLYING_TOKEN),
             BILL_TOKEN,          // address(BILL_TOKEN),

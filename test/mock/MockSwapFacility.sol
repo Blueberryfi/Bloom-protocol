@@ -15,7 +15,6 @@ import {IMockSwapFacility} from "./interfaces/IMockSwapFacility.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {ISwapRecipient} from "src/interfaces/ISwapRecipient.sol";
 
-
 contract MockSwapFacility is IMockSwapFacility {
     uint256 internal constant WAD = 1e18;
 

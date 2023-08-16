@@ -30,22 +30,21 @@ contract Deploy is Test, Script {
     address internal constant UNDERLYING_TOKEN = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC
     address internal constant BILL_TOKEN = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5; //bIB01
 
-
     // chainlink feeds
     address internal constant USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address internal constant IB01USD = 0x32d1463EB53b73C095625719Afa544D5426354cB;
-    
+
     bytes32 internal constant INITIALROOT = 0xabc6a38afc2e6c26bad45002703dd3bae47e41d24d13e71f8e61687633acc2ea;
     address internal constant INITIALOWNER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
 
     uint256 internal constant SPREAD = 0.0125e4; // 0.125%
     uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
-    uint256 internal constant MAX_BILL_VALUE = 107.60e8;
+    uint256 internal constant MAX_BILL_VALUE = 107.6e8;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant commitPhaseDuration = 3 hours;
     uint256 internal constant poolPhaseDuration = 2 days;
     uint256 internal constant preHoldSwapTimeout = 7 days;
-    
+
     // Aux
     BPSFeed internal lenderReturnBpsFeed;
     MerkleWhitelist internal whitelist;
@@ -53,7 +52,6 @@ contract Deploy is Test, Script {
     // Protocol
     BloomPool internal pool;
     SwapFacility internal swap;
-    
 
     function run() public {
         vm.startBroadcast();
@@ -76,18 +74,16 @@ contract Deploy is Test, Script {
         );
         vm.label(address(whitelist), "MerkleWhitelist");
         console2.log("MerkleWhitelist deployed at:", address(whitelist));
-        }
-    
-        function _deployBPSFeed() internal {
+    }
+
+    function _deployBPSFeed() internal {
         lenderReturnBpsFeed = new BPSFeed();
         vm.label(address(lenderReturnBpsFeed), "BPSFeed");
         console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
     }
-    
 
     function _deploySwapFacility() internal {
-
-        uint256 deployerNonce = vm.getNonce(address(this));
+        uint256 deployerNonce = vm.getNonce(address(DEPLOYER));
 
         swap = new SwapFacility(
             UNDERLYING_TOKEN, 
@@ -105,7 +101,6 @@ contract Deploy is Test, Script {
     }
 
     function _deployBloomPool() internal {
-
         pool = new BloomPool(
             UNDERLYING_TOKEN,
             BILL_TOKEN,
