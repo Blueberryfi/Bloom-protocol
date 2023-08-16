@@ -11,7 +11,6 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-
 contract MockERC20 is ERC20 {
     constructor(uint8 d) ERC20("Mock Token", "MCK", d) {}
 
