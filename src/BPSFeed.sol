@@ -52,7 +52,7 @@ contract BPSFeed is IBPSFeed, Owned {
         
         uint256 tentativeCurrentRate = currentRate + _rate;
         if (tentativeCurrentRate > MAX_RATE) {
-            tentativeCurrentRate = MAX_RATE;
+            revert InvalidRate();
         }
 
         currentRate = tentativeCurrentRate;
