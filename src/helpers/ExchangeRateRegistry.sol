@@ -87,14 +87,12 @@ contract ExchangeRateRegistry is Ownable {
      * @notice Emitted when exchange rate is updated
      * @param caller The address initiating the exchange rate update
      * @param token The token address
-     * @param addition The addition to exchange rate
-     * @param subtraction The subtraction from exchange rate
+     * @param exchangeRate The new exchange rate
      */
     event ExchangeRateUpdated(
         address indexed caller,
         address token,
-        uint256 addition,
-        uint256 subtraction
+        uint256 exchangeRate
     );
 
     /**
@@ -120,13 +118,14 @@ contract ExchangeRateRegistry is Ownable {
      * @notice Register new token to the registry
      * @param token The token address to register
      * @param pool The pool associated with the token
-     * @param createdAt Timestamp of the token creation
      */
     function registerToken(
         address token,
-        address pool,
-        uint256 createdAt
+        address pool
     ) external onlyOwner {
+        IBloomPool poolContract = IBloomPool(pool);
+        uint256 createdAt = poolContract.COMMIT_PHASE_END();
+
         TokenInfo storage info = tokenInfos[token];
         require(
             !info.registered,
@@ -216,6 +215,8 @@ contract ExchangeRateRegistry is Ownable {
         uint256 exchangeRate = _getExchangeRate(token);
 
         info.exchangeRate = exchangeRate;
+
+        emit ExchangeRateUpdated(msg.sender, token, exchangeRate);
     }
 
     /**
