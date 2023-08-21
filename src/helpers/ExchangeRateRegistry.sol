@@ -28,8 +28,8 @@ contract ExchangeRateRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant BASE_RATE = 1e18;
-    uint256 public constant ONE_YEAR = 365 days;
-    uint256 public constant BPS = 1e4;
+    uint256 public constant ONE_YEAR = 360 days;
+    uint256 public constant SCALER = 1e14;
 
     struct TokenInfo {
         bool registered;
@@ -248,15 +248,16 @@ contract ExchangeRateRegistry is Ownable {
         uint256 duration = pool.POOL_PHASE_DURATION();
         IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
 
-        uint256 rate = bpsFeed.getWeightedRate();
+        uint256 rate = (bpsFeed.getWeightedRate() * SCALER);
         uint256 timeElapsed = block.timestamp - info.createdAt;
         if (timeElapsed > duration) {
             timeElapsed = duration;
         }
-        uint256 delta = (rate * (BPS - lenderFee) * timeElapsed) /
-            ONE_YEAR /
-            BPS;
+        uint256 adjustedLenderFee = (lenderFee * SCALER);
 
-        return BASE_RATE + delta * BASE_RATE / BPS;
+        uint256 delta = (rate * (BASE_RATE - adjustedLenderFee) * timeElapsed) /
+            ONE_YEAR;
+
+        return BASE_RATE + (delta * BASE_RATE);
     }
 }
