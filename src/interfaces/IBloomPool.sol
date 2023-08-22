@@ -58,10 +58,10 @@ interface IBloomPool {
     event EmergencyWithdraw(address indexed to);
 
     /// @notice Initiates the pre-hold swap.
-    function initiatePreHoldSwap() external;
+    function initiatePreHoldSwap(bytes32[] calldata proof) external;
 
     /// @notice Initiates the post-hold swap.
-    function initiatePostHoldSwap() external;
+    function initiatePostHoldSwap(bytes32[] calldata proof) external;
 
     /**
      * @notice Deposits funds from the borrower committing them for the duration of the commit

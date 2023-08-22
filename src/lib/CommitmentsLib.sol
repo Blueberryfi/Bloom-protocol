@@ -24,7 +24,6 @@ struct Commitments {
     uint192 totalAssetsCommitted;
 }
 
-
 library CommitmentsLib {
     using SafeCastLib for uint256;
 

@@ -21,7 +21,13 @@ contract BPSFeed is IBPSFeed, Owned {
     uint256 internal _totalRate;
     uint256 internal _totalDuration;
 
-    constructor() Owned(msg.sender) {}
+    // ================== Constants ==================
+    uint256 internal constant INITIAL_RATE = 1e4;
+    uint256 internal constant MAX_RATE = 1.5e4;
+
+    constructor() Owned(msg.sender) {
+        currentRate = INITIAL_RATE;
+    }
 
     /// @inheritdoc IBPSFeed
     function getWeightedRate() external view returns (uint256) {
@@ -35,12 +41,18 @@ contract BPSFeed is IBPSFeed, Owned {
 
     /// @inheritdoc IBPSFeed
     function updateRate(uint256 _rate) external onlyOwner {
+        if (_rate < INITIAL_RATE || _rate > MAX_RATE) {
+            revert InvalidRate();
+        }
         if (lastTimestamp > 0) {
             uint256 lastRateDuration = block.timestamp - lastTimestamp;
             _totalRate += currentRate * lastRateDuration;
             _totalDuration += lastRateDuration;
         }
+
         currentRate = _rate;
         lastTimestamp = block.timestamp;
+
+        emit UpdateRate(currentRate);
     }
 }
