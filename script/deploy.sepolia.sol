@@ -34,7 +34,7 @@ contract Deploy is Test, Script {
     // MockERC20 internal UNDERLYING_TOKEN;
     // MockERC20 internal BILL_TOKEN;
 
-    // address internal constant WHITELIST = 0x5E1D6c195d71255c6c574e373379d9610CFF277d;
+    IWhitelist internal constant WHITELIST = IWhitelist(0x461796731316D6987F77f50c249bF3c272668F13);
     address internal constant BPSFEED = 0x4C46dfc9e4cCe661d6E24FE49C43adb004423541;
 
     // chainlink feeds
@@ -49,14 +49,14 @@ contract Deploy is Test, Script {
     uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
     uint256 internal constant MAX_BILL_VALUE = 107.6e8;
     uint256 internal constant BPS = 1e4;
-    uint256 internal constant commitPhaseDuration = 1 hours;
+    uint256 internal constant commitPhaseDuration = 10 days;
     uint256 internal constant poolPhaseDuration = 2 days;
-    uint256 internal constant preHoldSwapTimeout = 7 days;
+    uint256 internal constant preHoldSwapTimeout = 1 days;
 
     // Aux
     BPSFeed internal lenderReturnBpsFeed;
-    MerkleWhitelist internal whitelistBorrow;
-    MerkleWhitelist internal whitelistSwap;
+    //MerkleWhitelist internal whitelistBorrow;
+    //MerkleWhitelist internal whitelistSwap;
 
     // Protocol
     BloomPool internal pool;
@@ -67,8 +67,8 @@ contract Deploy is Test, Script {
 
         // Deploy aux items
         //_deployBillyToken();
-        _deployMerkleWhitelistBorrow();
-        _deployMerkleWhitelistSwap();
+        // _deployMerkleWhitelistBorrow();
+        // _deployMerkleWhitelistSwap();
         //_deployBPSFeed();
 
         // Deploy protocol
@@ -85,23 +85,23 @@ contract Deploy is Test, Script {
     //     vm.label(address(BILL_TOKEN), "BillyToken");
     // }
 
-    function _deployMerkleWhitelistBorrow() internal {
-        whitelistBorrow = new MerkleWhitelist(
-            INITIALROOTBORROW,
-            INITIALOWNER
-        );
-        vm.label(address(whitelistBorrow), "MerkleWhitelistBorrow");
-        console2.log("MerkleWhitelist deployed at:", address(whitelistBorrow));
-    }
+    //function _deployMerkleWhitelistBorrow() internal {
+    //    whitelistBorrow = new MerkleWhitelist(
+    //        INITIALROOTBORROW,
+    //        INITIALOWNER
+    //    );
+    //    vm.label(address(whitelistBorrow), "MerkleWhitelistBorrow");
+    //    console2.log("MerkleWhitelist deployed at:", address(whitelistBorrow));
+    //}
 
-    function _deployMerkleWhitelistSwap() internal {
-        whitelistSwap = new MerkleWhitelist(
-            INITIALROOTSWAP,
-            INITIALOWNER
-        );
-        vm.label(address(whitelistSwap), "MerkleWhitelistSwap");
-        console2.log("MerkleWhitelist deployed at:", address(whitelistSwap));
-    }
+    //function _deployMerkleWhitelistSwap() internal {
+    //    whitelistSwap = new MerkleWhitelist(
+    //        INITIALROOTSWAP,
+    //        INITIALOWNER
+    //    );
+    //    vm.label(address(whitelistSwap), "MerkleWhitelistSwap");
+    //    console2.log("MerkleWhitelist deployed at:", address(whitelistSwap));
+    //}
 
     //     function _deployBPSFeed() internal {
     //     lenderReturnBpsFeed = new BPSFeed();
@@ -117,8 +117,8 @@ contract Deploy is Test, Script {
             BILL_TOKEN,        // address(BILL_TOKEN),
             USDCUSD,
             IB01USD,
-            // IWhitelist(address(WHITELIST)),         
-            IWhitelist(address(whitelistSwap)),
+            IWhitelist(address(WHITELIST)),         
+            //IWhitelist(address(whitelistSwap)),
             SPREAD,
             LibRLP.computeAddress(msg.sender, deployerNonce +1),
             MIN_STABLE_VALUE,
@@ -132,8 +132,8 @@ contract Deploy is Test, Script {
         pool = new BloomPool(
             UNDERLYING_TOKEN,    // address(UNDERLYING_TOKEN),
             BILL_TOKEN,          // address(BILL_TOKEN),
-            // IWhitelist(address(WHITELIST)),           // 
-            IWhitelist(address(whitelistBorrow)),
+            IWhitelist(address(WHITELIST)),           // 
+            //IWhitelist(address(whitelistBorrow)),
             address(swap),
             TREASURY,
             BPSFEED,             // address(lenderReturnBpsFeed),

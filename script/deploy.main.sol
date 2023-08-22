@@ -41,7 +41,7 @@ contract Deploy is Test, Script {
     uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
     uint256 internal constant MAX_BILL_VALUE = 109.6e8;
     uint256 internal constant BPS = 1e4;
-    uint256 internal constant commitPhaseDuration = 3 days;
+    uint256 internal constant commitPhaseDuration = 102 hours;
     uint256 internal constant poolPhaseDuration = 180 days;
     uint256 internal constant preHoldSwapTimeout = 7 days;
 
@@ -121,14 +121,14 @@ contract Deploy is Test, Script {
             address(lenderReturnBpsFeed),
             EMERGENCY_HANDLER,
             50e4,
-            1,
+            10.0e6,
             commitPhaseDuration,
             preHoldSwapTimeout,
             poolPhaseDuration,
             300, // 3%
             0, // 0%
-            "Term Bound Yield 6 month 2024-2-11",
-            "TBY-feb1124"
+            "Term Bound Yield 6 month 2024-2-19",
+            "TBY-feb1924"
         );
         console2.log("BloomPool deployed at:", address(pool));
     }
