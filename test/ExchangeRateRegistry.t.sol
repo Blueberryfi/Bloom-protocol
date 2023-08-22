@@ -35,7 +35,7 @@ contract ExchangeRateRegistryTest is Test {
     MockBPSFeed internal feed;
     ExchangeRateRegistry internal registry;
 
-    uint256 internal constant ORACLE_RATE = 200;
+    uint256 internal constant ORACLE_RATE = 10200;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant LENDER_RETURN_FEE = 1000;
     uint256 internal constant SCALER = 1e14;
@@ -128,8 +128,8 @@ contract ExchangeRateRegistryTest is Test {
         for (uint256 i=1; i <= testingIntervals; i++) {
             uint256 timePerInterval = POOL_DURATION / testingIntervals;
             skip(timePerInterval);
-
-            uint256 valueAccrued = ((ORACLE_RATE * SCALER) / testingIntervals) * i;
+            
+            uint256 valueAccrued = (((ORACLE_RATE - 1e4) * SCALER) / testingIntervals) * i;
             uint256 lenderShare = valueAccrued * (LENDER_RETURN_FEE * SCALER) / 1e18;
             uint256 expectedRate = STARTING_EXCHANGE_RATE + valueAccrued - lenderShare;
 

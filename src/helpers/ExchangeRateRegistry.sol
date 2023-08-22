@@ -27,6 +27,7 @@ import "../interfaces/IBloomPool.sol";
 contract ExchangeRateRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 public constant INITIAL_FEED_RATE = 1e4;
     uint256 public constant BASE_RATE = 1e18;
     uint256 public constant SCALER = 1e14;
 
@@ -255,7 +256,7 @@ contract ExchangeRateRegistry is Ownable {
         uint256 duration = pool.POOL_PHASE_DURATION();
         IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
 
-        uint256 rate = (bpsFeed.getWeightedRate() * SCALER);
+        uint256 rate = (bpsFeed.getWeightedRate() - INITIAL_FEED_RATE) * SCALER;
         uint256 timeElapsed = block.timestamp - info.createdAt;
         if (timeElapsed > duration) {
             timeElapsed = duration;
@@ -265,6 +266,6 @@ contract ExchangeRateRegistry is Ownable {
         uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee) / 1e18) * timeElapsed) / 
             duration;
 
-        return BASE_RATE + ((delta * BASE_RATE) / 1e18);
+        return BASE_RATE + delta;
     }
 }
