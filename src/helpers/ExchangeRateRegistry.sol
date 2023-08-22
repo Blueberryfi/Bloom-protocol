@@ -28,7 +28,6 @@ contract ExchangeRateRegistry is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant BASE_RATE = 1e18;
-    uint256 public constant ONE_YEAR = 360 days;
     uint256 public constant SCALER = 1e14;
 
     struct TokenInfo {
@@ -190,6 +189,13 @@ contract ExchangeRateRegistry is Ownable {
     }
 
     /**
+     * @notice Return true if the registry has been initialized
+     */
+    function isRegistryInitialized() external view returns (bool) {
+        return _initialized;
+    }
+
+    /**
      * @notice Update the exchange rate for the given token
      * @param token The token address
      */
@@ -255,10 +261,10 @@ contract ExchangeRateRegistry is Ownable {
             timeElapsed = duration;
         }
         uint256 adjustedLenderFee = (lenderFee * SCALER);
+        
+        uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee) / 1e18) * timeElapsed) / 
+            duration;
 
-        uint256 delta = (rate * (BASE_RATE - adjustedLenderFee) * timeElapsed) /
-            ONE_YEAR;
-
-        return BASE_RATE + (delta * BASE_RATE);
+        return BASE_RATE + ((delta * BASE_RATE) / 1e18);
     }
 }
