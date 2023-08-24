@@ -29,6 +29,7 @@ contract ExchangeRateRegistry is Ownable {
 
     uint256 public constant INITIAL_FEED_RATE = 1e4;
     uint256 public constant BASE_RATE = 1e18;
+    uint256 public constant ONE_YEAR = 360 days;
     uint256 public constant SCALER = 1e14;
 
     struct TokenInfo {
@@ -36,7 +37,6 @@ contract ExchangeRateRegistry is Ownable {
         bool active;
         address pool;
         uint256 createdAt;
-        uint256 exchangeRate;
     }
 
     /**
@@ -82,18 +82,6 @@ contract ExchangeRateRegistry is Ownable {
      * @param token The token address
      */
     event TokenInactivated(address token);
-
-    /**
-     * @notice Emitted when exchange rate is updated
-     * @param caller The address initiating the exchange rate update
-     * @param token The token address
-     * @param exchangeRate The new exchange rate
-     */
-    event ExchangeRateUpdated(
-        address indexed caller,
-        address token,
-        uint256 exchangeRate
-    );
 
     /**
      * @dev Function to initialize the contract
@@ -197,48 +185,6 @@ contract ExchangeRateRegistry is Ownable {
     }
 
     /**
-     * @notice Update the exchange rate for the given token
-     * @param token The token address
-     */
-    function updateExchangeRate(address token) external onlyOwner {
-        _updateExchangeRate(token);
-    }
-
-    /**
-     * @notice Update the exchange rate for all active tokens
-     */
-    function updateExchangeRateForAll() external onlyOwner {
-        address[] memory activeTokens = _activeTokens.values();
-
-        uint256 length = activeTokens.length;
-        for (uint256 i; i != length; ++i) {
-            _updateExchangeRate(activeTokens[i]);
-        }
-    }
-
-    function _updateExchangeRate(address token) internal {
-        TokenInfo storage info = tokenInfos[token];
-
-        uint256 exchangeRate = _getExchangeRate(token);
-
-        info.exchangeRate = exchangeRate;
-
-        emit ExchangeRateUpdated(msg.sender, token, exchangeRate);
-    }
-
-    /**
-     * @notice Returns the most recent updated exchange rate of the given token
-     * @param token The token address
-     * @return The most recent updated exchange rate of the given token
-     */
-    function getRecentRate(address token) external view returns (uint256) {
-        TokenInfo storage info = tokenInfos[token];
-        require(info.registered, "ExchangeRateRegistry: token not registered");
-
-        return info.exchangeRate;
-    }
-
-    /**
      * @notice Returns the current exchange rate of the given token
      * @param token The token address
      * @return The current exchange rate of the given token
@@ -264,7 +210,7 @@ contract ExchangeRateRegistry is Ownable {
         uint256 adjustedLenderFee = (lenderFee * SCALER);
         
         uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee) / 1e18) * timeElapsed) / 
-            duration;
+            ONE_YEAR;
 
         return BASE_RATE + delta;
     }

@@ -102,6 +102,7 @@ contract ExchangeRateRegistryTest is Test {
         assertEq(registry.isRegistryInitialized(), true);
         
         address rando = makeAddr("rando");        
+        vm.prank(rando);
         
         vm.expectRevert("Ownable: caller is not the owner");
         registry.initialize(registryOwner);
