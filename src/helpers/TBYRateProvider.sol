@@ -43,13 +43,6 @@ contract TBYRateProvider is IRateProvider {
     }
 
     /**
-     * @return address of TBY
-     */
-    function getTBYAddress() public view returns (address) {
-        return tby;
-    }
-
-    /**
      * @return value of TBY in terms of USD returns an 18 decimal number
      */
     function getRate() public view override returns (uint256) {
