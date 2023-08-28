@@ -40,6 +40,7 @@ contract SwapFacilityTest is Test {
     error InvalidToken();
     error NotPool();
     error NotWhitelisted();
+    error ExtremePrice();
 
     // ============== Redefined Events ===============
     event PoolUpdated(address indexed oldPool, address indexed newPool);
@@ -70,7 +71,7 @@ contract SwapFacilityTest is Test {
             IWhitelist(address(whitelist)),
             0.002e4,
             LibRLP.computeAddress(address(this), deployerNonce + 1),
-            0,
+            0.995e8,
             type(uint256).max
         );
         vm.label(address(swap), "SwapFacility");
@@ -174,6 +175,21 @@ contract SwapFacilityTest is Test {
 
         assertEq(stableToken.balanceOf(user), outAmount);
         assertEq(billyToken.balanceOf(address(pool)), inAmount);
+
+        vm.stopPrank();
+    }
+
+    function test_swap_fail_with_InvalidPrice_stage_1() public {
+        initPreHoldSwap();
+        whitelist.add(user);
+
+        startHoax(user);
+        uint256 inAmount = 10e18;
+        billyToken.mint(user, inAmount);
+        billyToken.approve(address(swap), inAmount);
+        usdcOracle.setAnswer(90_000_000);
+        vm.expectRevert(ExtremePrice.selector);
+        swap.swap(address(billyToken), address(stableToken), 100 ether, new bytes32[](0));
 
         vm.stopPrank();
     }
