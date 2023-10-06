@@ -31,8 +31,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     uint256 internal constant BPS = 1e4;
     uint256 internal constant ONE_YEAR = 360 days;
-    event CodeRech(uint256 num);
-    event Value(string s, uint256 v);
+
     // =============== Core Parameters ===============
 
     address public immutable UNDERLYING_TOKEN;
@@ -211,24 +210,18 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         if (currentState == State.PendingPostHoldSwap) {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
             uint256 totalMatched = totalMatchAmount();
-            emit Value("macthed",totalMatched);
 
             uint256 yieldEarned = totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / ONE_YEAR / BPS;
             
-            emit Value("yield",yieldEarned);
-
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
             uint256 lenderReturn = Math.min(
                 totalMatched + yieldEarned,
                 outAmount
             );
-            emit Value("Return", lenderReturn);
+
             uint256 borrowerReturn = outAmount - lenderReturn;
-            emit CodeRech(1);
             uint256 lenderReturnFee = (lenderReturn - totalMatched) * LENDER_RETURN_FEE / BPS;
-            emit Value("lrt", lenderReturnFee);
             uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
-            emit Value("brt", borrowerReturnFee);
 
             borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();
@@ -239,7 +232,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             UNDERLYING_TOKEN.safeTransfer(TREASURY, lenderReturnFee + borrowerReturnFee);
 
             emit ExplictStateTransition(State.PendingPostHoldSwap, setState = State.FinalWithdraw);
-            emit CodeRech(2);
             return;
         }
         revert InvalidState(currentState);
