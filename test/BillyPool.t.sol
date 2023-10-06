@@ -59,7 +59,7 @@ contract BloomPoolTest is Test {
         swap = new MockSwapFacility(stableToken, billyToken);
         feed = new MockBPSFeed();
 
-        feed.setRate(1e4);
+        feed.setRate(1.25e4);
 
         pool = new BloomPool({
             underlyingToken: address(stableToken),
