@@ -211,9 +211,8 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             if (outToken != UNDERLYING_TOKEN) revert InvalidOutToken(outToken);
             uint256 totalMatched = totalMatchAmount();
 
-            uint256 yieldEarned = totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / ONE_YEAR / BPS;
-            
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
+            uint256 yieldEarned = totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / ONE_YEAR / BPS;
             uint256 lenderReturn = Math.min(
                 totalMatched + yieldEarned,
                 outAmount
