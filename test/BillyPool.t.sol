@@ -59,7 +59,7 @@ contract BloomPoolTest is Test {
         swap = new MockSwapFacility(stableToken, billyToken);
         feed = new MockBPSFeed();
 
-        feed.setRate((BPS + 30) * 12);
+        feed.setRate(1e4);
 
         pool = new BloomPool({
             underlyingToken: address(stableToken),
@@ -352,9 +352,10 @@ contract BloomPoolTest is Test {
             assertEq(borrowerShares, borrowAmount);
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
-            lenderReceived = lenderAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() / 12 / BPS;
-            borrowerReceived = totalAmount - lenderReceived;
             uint256 totalMatchAmount = pool.totalMatchAmount();
+            uint256 lenderYield = totalMatchAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() * 30 / 360 / BPS;
+            lenderReceived = totalMatchAmount + lenderYield;
+            borrowerReceived = totalAmount - lenderReceived;
             uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
             lenderReceived -= lenderFee;
