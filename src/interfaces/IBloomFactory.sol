@@ -10,10 +10,12 @@
 
 pragma solidity ^0.8.0;
 
-import {IWhitelist} from "./IWhitelist.sol";
-import {IBloomPool} from "./IBloomPool.sol";
+import {BloomPool} from "../BloomPool.sol";
 
-interface IBPSFactory {
+import {IWhitelist} from "./IWhitelist.sol";
+
+interface IBloomFactory {
+    error InvalidPoolAddress();
 
     struct GeneralParams {
         address underlyingToken;
@@ -22,8 +24,8 @@ interface IBPSFactory {
     }
 
     struct PoolParams {
-        address swapFacility;
         address treasury;
+        address borrowerWhiteList;
         address lenderReturnBpsFeed;
         address emergencyHandler;
         uint256 leverageBps;
@@ -36,12 +38,13 @@ interface IBPSFactory {
     }
 
     struct SwapFacilityParams {
-        address _underlyingTokenOracle;
-        address _billyTokenOracle;
-        uint256 _spread;
-        address _pool;
-        uint256 _minStableValue;
-        uint256 _maxBillyValue;
+        address underlyingTokenOracle;
+        address billyTokenOracle;
+        address swapWhitelist;
+        uint256 spread;
+        address pool;
+        uint256 minStableValue;
+        uint256 maxBillyValue;
     }
 
     event NewBloomPoolCreated(address indexed pool, address swapFacility);
@@ -56,7 +59,7 @@ interface IBPSFactory {
      * @return Array of pool addresses
      */
     function getAllPoolsFromFactory() external view returns (address[] memory);
-    
+
     /**
      * @notice Returns true if the pool was created from the factory
      * @param pool Address of a BloomPool
@@ -78,7 +81,8 @@ interface IBPSFactory {
         string memory symbol,
         GeneralParams calldata generalParams,
         PoolParams calldata poolParams,
-        SwapFacilityParams calldata swapFacilityParams
-    ) external returns (IBloomPool);
+        SwapFacilityParams calldata swapFacilityParams,
+        uint256 deployerNonce
+    ) external returns (BloomPool);
 
 }
