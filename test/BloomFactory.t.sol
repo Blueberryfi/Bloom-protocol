@@ -76,15 +76,12 @@ contract BloomFactoryTest is Test {
         assertEq(factory.isPoolFromFactory(address(pool)), true);
     }
 
-    function testGetAllPoolsFromFactory(uint256 count) public {
-        if (count > 20) {
-            return;
-        }
-        for(uint256 i=0; i<count; i++) {
+    function testGetAllPoolsFromFactory() public {
+        for(uint256 i = 1; i <= 25; i++) {
             _newPoolInstance();
+            address[] memory pools = factory.getAllPoolsFromFactory();
+            assertEq(pools.length, i);
         }
-        address[] memory pools = factory.getAllPoolsFromFactory();
-        assertEq(pools.length, count);
     }
 
     function testCreatePoolFailure() public {
