@@ -17,12 +17,6 @@ import {IWhitelist} from "./IWhitelist.sol";
 interface IBloomFactory {
     error InvalidPoolAddress();
 
-    struct GeneralParams {
-        address underlyingToken;
-        address billToken;
-        IWhitelist whitelist;
-    }
-
     struct PoolParams {
         address treasury;
         address borrowerWhiteList;
@@ -42,7 +36,6 @@ interface IBloomFactory {
         address billyTokenOracle;
         address swapWhitelist;
         uint256 spread;
-        address pool;
         uint256 minStableValue;
         uint256 maxBillyValue;
     }
@@ -71,15 +64,18 @@ interface IBloomFactory {
      * @notice Create and initializes a new BloomPool and SwapFacility
      * @param name Name of the pool
      * @param symbol Symbol of the pool
-     * @param generalParams Parameters that are used for both the pool and the swap facility
+     * @param underlyingToken Address of the underlying token
+     * @param billToken Address of the bill token
      * @param poolParams Parameters that are used for the pool
      * @param swapFacilityParams Parameters that are used for the swap facility
+     * @param deployerNonce Nonce of the factory
      * @return Address of the new pool
      */
     function create(
         string memory name,
         string memory symbol,
-        GeneralParams calldata generalParams,
+        address underlyingToken,
+        address billToken,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
         uint256 deployerNonce

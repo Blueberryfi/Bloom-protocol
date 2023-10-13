@@ -10,13 +10,11 @@
 
 pragma solidity 0.8.19;
 
-import {Create2} from "openzeppelin/utils/Create2.sol";
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {Ownable2Step} from "openzeppelin/access/Ownable2Step.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 
 import {BloomPool} from "./BloomPool.sol";
-import {MerkleWhitelist} from "./MerkleWhitelist.sol";
 import {SwapFacility} from "./SwapFacility.sol";
 
 import {IBloomFactory} from "./interfaces/IBloomFactory.sol";
@@ -54,18 +52,19 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
     function create(
         string memory name,
         string memory symbol,
-        GeneralParams calldata generalParams,
+        address underlyingToken,
+        address billToken,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
         uint256 deployerNonce
     ) external override onlyOwner returns (BloomPool) {
+        // Precompute the address of the BloomPool
+        address expectedPoolAddress = LibRLP.computeAddress(address(this), deployerNonce + 1);
         
-        address expectedPoolAddress = LibRLP.computeAddress(msg.sender, deployerNonce + 1);
-
         // Deploys SwapFacility
         SwapFacility swapFacility = new SwapFacility(
-            generalParams.underlyingToken,
-            generalParams.billToken,
+            underlyingToken,
+            billToken,
             swapFacilityParams.underlyingTokenOracle,
             swapFacilityParams.billyTokenOracle,
             IWhitelist(swapFacilityParams.swapWhitelist),
@@ -74,11 +73,11 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
             swapFacilityParams.minStableValue,
             swapFacilityParams.maxBillyValue
         );
-        
+
         // Deploys BloomPool
         BloomPool bloomPool = new BloomPool(
-            generalParams.underlyingToken,
-            generalParams.billToken,
+            underlyingToken,
+            billToken,
             IWhitelist(poolParams.borrowerWhiteList),
             address(swapFacility),
             poolParams.treasury,
@@ -102,7 +101,7 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
             revert InvalidPoolAddress();
         }
 
-        // Add the pool to the set of pools & set the last created pool
+        // Add the pool to the set of pools & store the last created pool
         _pools.add(address(bloomPool));
         _lastCreatedPool = address(bloomPool);
 
