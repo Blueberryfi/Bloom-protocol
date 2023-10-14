@@ -14,8 +14,11 @@ import {IOracle} from "src/interfaces/IOracle.sol";
 
 contract MockOracle is IOracle {
     int256 public latestAnswer;
+    uint8 public decimals;
 
-    uint8 public constant decimals = 8;
+    constructor(uint8 _decimals) {
+       decimals = _decimals;
+    }
 
     function setAnswer(int256 _answer) external {
         latestAnswer = _answer;

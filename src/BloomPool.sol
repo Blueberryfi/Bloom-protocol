@@ -30,6 +30,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     using SafeCastLib for uint256;
 
     uint256 internal constant BPS = 1e4;
+    uint256 internal constant ONE_YEAR = 360 days;
 
     // =============== Core Parameters ===============
 
@@ -211,12 +212,13 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             uint256 totalMatched = totalMatchAmount();
 
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
+            uint256 yieldEarned = totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / ONE_YEAR / BPS;
             uint256 lenderReturn = Math.min(
-                totalMatched * IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() * POOL_PHASE_DURATION / 360 days / BPS,
+                totalMatched + yieldEarned,
                 outAmount
             );
-            uint256 borrowerReturn = outAmount - lenderReturn;
 
+            uint256 borrowerReturn = outAmount - lenderReturn;
             uint256 lenderReturnFee = (lenderReturn - totalMatched) * LENDER_RETURN_FEE / BPS;
             uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
 
