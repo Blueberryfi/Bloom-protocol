@@ -33,22 +33,22 @@ contract Deploy is Test, Script {
     address internal constant USDCUSD = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
     address internal constant IB01USD = 0x32d1463EB53b73C095625719Afa544D5426354cB;
 
-    bytes32 internal constant INITIALROOTBORROW = 0xabc6a38afc2e6c26bad45002703dd3bae47e41d24d13e71f8e61687633acc2ea;
-    bytes32 internal constant INITIALROOTSWAP = 0xabc6a38afc2e6c26bad45002703dd3bae47e41d24d13e71f8e61687633acc2ea;
-    address internal constant INITIALOWNER = 0x21c2bd51f230D69787DAf230672F70bAA1826F67;
+    IWhitelist internal constant WHITELIST_BORROW = IWhitelist(0x95e67b8d297C2E65B6385D9786CDb172B9554f00);
+    IWhitelist internal constant WHITELIST_SWAP = IWhitelist(0x1AE4EE9205Be92b8fc96f9C613f0486a4d9496Ae);
+    address internal constant LENDER_RETURN_BPS_FEED = 0xDe1f5F2d69339171D679FB84E4562febb71F36E6;
 
     uint256 internal constant SPREAD = 0.0125e4; // 0.125%
-    uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
+    uint256 internal constant MIN_STABLE_VALUE = 0.995e8;
     uint256 internal constant MAX_BILL_VALUE = 109.6e8;
     uint256 internal constant BPS = 1e4;
-    uint256 internal constant commitPhaseDuration = 102 hours;
+    uint256 internal constant commitPhaseDuration = 3 days;
     uint256 internal constant poolPhaseDuration = 180 days;
     uint256 internal constant preHoldSwapTimeout = 7 days;
 
     // Aux
-    BPSFeed internal lenderReturnBpsFeed;
-    MerkleWhitelist internal whitelistBorrow;
-    MerkleWhitelist internal whitelistSwap;
+    // BPSFeed internal lenderReturnBpsFeed;
+    // MerkleWhitelist internal whitelistBorrow;
+    // MerkleWhitelist internal whitelistSwap;
 
     // Protocol
     BloomPool internal pool;
@@ -58,9 +58,9 @@ contract Deploy is Test, Script {
         vm.startBroadcast();
 
         // Deploy aux items
-        _deployMerkleWhitelistBorrow();
-        _deployMerkleWhitelistSwap();
-        _deployBPSFeed();
+        // _deployMerkleWhitelistBorrow();
+        // _deployMerkleWhitelistSwap();
+        // _deployBPSFeed();
 
         // Deploy protocol
         _deploySwapFacility();
@@ -69,6 +69,7 @@ contract Deploy is Test, Script {
         vm.stopBroadcast();
     }
 
+    /* 
     function _deployMerkleWhitelistBorrow() internal {
         whitelistBorrow = new MerkleWhitelist(
             INITIALROOTBORROW,
@@ -92,6 +93,7 @@ contract Deploy is Test, Script {
         vm.label(address(lenderReturnBpsFeed), "BPSFeed");
         console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
     }
+    */
 
     function _deploySwapFacility() internal {
         uint256 deployerNonce = vm.getNonce(msg.sender);
@@ -101,7 +103,7 @@ contract Deploy is Test, Script {
             BILL_TOKEN,
             USDCUSD,
             IB01USD,
-            IWhitelist(address(whitelistSwap)),
+            IWhitelist(address(WHITELIST_SWAP)),
             SPREAD,
             LibRLP.computeAddress(msg.sender, deployerNonce + 1),
             MIN_STABLE_VALUE,
@@ -115,10 +117,10 @@ contract Deploy is Test, Script {
         pool = new BloomPool(
             UNDERLYING_TOKEN,
             BILL_TOKEN,
-            IWhitelist(address(whitelistBorrow)),
+            IWhitelist(address(WHITELIST_BORROW)),
             address(swap),
             TREASURY,
-            address(lenderReturnBpsFeed),
+            address(LENDER_RETURN_BPS_FEED),
             EMERGENCY_HANDLER,
             50e4,
             10.0e6,
@@ -127,8 +129,8 @@ contract Deploy is Test, Script {
             poolPhaseDuration,
             300, // 3%
             0, // 0%
-            "Term Bound Yield 6 month 2024-2-19",
-            "TBY-feb1924"
+            "Term Bound Yield 6 month feb-2024-Batch2",
+            "TBY-feb-2024-Batch2"
         );
         console2.log("BloomPool deployed at:", address(pool));
     }

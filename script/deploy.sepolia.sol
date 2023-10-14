@@ -46,7 +46,7 @@ contract Deploy is Test, Script {
     address internal constant INITIALOWNER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
 
     uint256 internal constant SPREAD = 0.0125e4; // 0.125%
-    uint256 internal constant MIN_STABLE_VALUE = 0.999999e8;
+    uint256 internal constant MIN_STABLE_VALUE = 0.995e8;
     uint256 internal constant MAX_BILL_VALUE = 107.6e8;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant commitPhaseDuration = 10 days;

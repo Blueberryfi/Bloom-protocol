@@ -55,6 +55,7 @@ contract SwapFacility is ISwapFacility, Owned {
     uint256 internal constant ORACLE_STALE_THRESHOLD = 36 hours;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant MAX_SPREAD = 0.1e4; // 10%
+    uint256 internal constant STABLE_VALUE = 1e8;
 
     /// @dev Current swap stage
     /// 0: Not started
@@ -236,13 +237,13 @@ contract SwapFacility is ISwapFacility, Owned {
         view
         returns (uint256 underlyingTokenPrice, uint256 billyTokenPrice)
     {
-        uint256 stablePrice = _readOracle(underlyingTokenOracle);
-        underlyingTokenPrice = stablePrice * billyScale;
+        uint256 stablePrice = _readOracle(underlyingTokenOracle); 
         uint256 billyPrice = _readOracle(billyTokenOracle);
         if (_boundPrices) {
             if (stablePrice < MIN_STABLE_VALUE) revert ExtremePrice();
             if (billyPrice > MAX_BILLY_VALUE) revert ExtremePrice();
         }
+        underlyingTokenPrice = STABLE_VALUE * billyScale;
         billyTokenPrice = billyPrice * underlyingScale;
     }
 
