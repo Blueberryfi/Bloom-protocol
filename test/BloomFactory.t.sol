@@ -13,13 +13,16 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
+
 import {Ownable} from "openzeppelin/access/Ownable.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 
-import {BloomFactory, BloomPool, IWhitelist, IBloomFactory} from "../src/BloomFactory.sol";
+import {BloomFactory, BloomPool, IWhitelist, IBloomFactory} from "src/BloomFactory.sol";
+import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
 
 contract BloomFactoryTest is Test {
     BloomFactory public factory;
+    ExchangeRateRegistry public registry;
 
     MockERC20 public underlyingToken;
     MockERC20 public billToken;
@@ -32,13 +35,16 @@ contract BloomFactoryTest is Test {
     bool internal _setWrongNonce;
 
     function setUp() public {
+        address multisig = makeAddr("multisig");
+
         factory = new BloomFactory();
+        registry = new ExchangeRateRegistry(multisig, address(factory));
 
         underlyingToken = new MockERC20(8);
         billToken = new MockERC20(18);
 
-        underlyingOracle = new MockOracle();
-        billOracle = new MockOracle();
+        underlyingOracle = new MockOracle(8);
+        billOracle = new MockOracle(8);
 
         poolParams = IBloomFactory.PoolParams({
             treasury: address(1), // Set to address(1) b/c irrelevant for tests
@@ -76,14 +82,6 @@ contract BloomFactoryTest is Test {
         assertEq(factory.isPoolFromFactory(address(pool)), true);
     }
 
-    function testGetAllPoolsFromFactory() public {
-        for(uint256 i = 1; i <= 25; i++) {
-            _newPoolInstance();
-            address[] memory pools = factory.getAllPoolsFromFactory();
-            assertEq(pools.length, i);
-        }
-    }
-
     function testCreatePoolFailure() public {
         _setWrongNonce = true;
 
@@ -99,6 +97,16 @@ contract BloomFactoryTest is Test {
         _newPoolInstance();
     }
 
+    function testVerifyTokenActivation() public {
+        BloomPool pool = _newPoolInstance();
+
+        // Verfiy that the the factory registers and activates the token on deployment
+        (bool isRegistered, bool isActive, ,) = registry.tokenInfos(address(pool));
+        assertEq(isRegistered, true);
+        assertEq(isActive, true);
+
+    }
+
     function _newPoolInstance() private returns (BloomPool) {
         uint256 nonce = vm.getNonce(address(factory));
 
@@ -111,6 +119,7 @@ contract BloomFactoryTest is Test {
             'TBY',
             address(underlyingToken),
             address(billToken),
+            registry,
             poolParams,
             swapFacilityParams,
             nonce

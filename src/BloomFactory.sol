@@ -19,25 +19,15 @@ import {SwapFacility} from "./SwapFacility.sol";
 
 import {IBloomFactory} from "./interfaces/IBloomFactory.sol";
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
+import {IRegistry} from "./interfaces/IRegistry.sol";
 
 contract BloomFactory is IBloomFactory, Ownable2Step {
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    // =================== Storage ===================    
+    // =================== Storage ===================   
     address private _lastCreatedPool;
-    EnumerableSet.AddressSet internal _pools;
+    mapping(address => bool) private _isPoolFromFactory;
 
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
-    }
-
-    function getAllPoolsFromFactory()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
-        return _pools.values();
     }
 
     function isPoolFromFactory(address pool)
@@ -46,7 +36,7 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         override
         returns (bool) 
     {
-        return _pools.contains(pool);
+        return _isPoolFromFactory[pool];
     }
 
     function create(
@@ -54,6 +44,7 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         string memory symbol,
         address underlyingToken,
         address billToken,
+        IRegistry exchangeRateRegistry,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
         uint256 deployerNonce
@@ -102,8 +93,11 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         }
 
         // Add the pool to the set of pools & store the last created pool
-        _pools.add(address(bloomPool));
+        _isPoolFromFactory[address(bloomPool)] = true;
         _lastCreatedPool = address(bloomPool);
+
+        // Register the pool in the exchange rate registry & activate the token
+        exchangeRateRegistry.registerToken(address(bloomPool), bloomPool);
 
         emit NewBloomPoolCreated(address(bloomPool), address(swapFacility));
 

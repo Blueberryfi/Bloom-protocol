@@ -13,6 +13,7 @@ pragma solidity ^0.8.0;
 import {BloomPool} from "../BloomPool.sol";
 
 import {IWhitelist} from "./IWhitelist.sol";
+import {IRegistry} from "./IRegistry.sol";
 
 interface IBloomFactory {
     error InvalidPoolAddress();
@@ -48,12 +49,6 @@ interface IBloomFactory {
     function getLastCreatedPool() external view returns (address);
 
     /**
-     * @notice Returns all pools that were created from the factory
-     * @return Array of pool addresses
-     */
-    function getAllPoolsFromFactory() external view returns (address[] memory);
-
-    /**
      * @notice Returns true if the pool was created from the factory
      * @param pool Address of a BloomPool
      * @return True if the pool was created from the factory
@@ -76,6 +71,7 @@ interface IBloomFactory {
         string memory symbol,
         address underlyingToken,
         address billToken,
+        IRegistry exchangeRateRegistry,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
         uint256 deployerNonce

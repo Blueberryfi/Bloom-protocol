@@ -99,10 +99,9 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
         _bloomFactory = bloomFactory;
     }
 
+
     /**
-     * @notice Register new token to the registry
-     * @param token The token address to register
-     * @param pool The pool associated with the token
+     * @inheritdoc IRegistry
      */
     function registerToken(
         address token,
@@ -127,8 +126,7 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
-     * @notice Activate the token
-     * @param token The token address to activate
+     * @inheritdoc IRegistry
      */
     function activateToken(address token) external onlyFactoryOrOwner {
         TokenInfo storage info = tokenInfos[token];
@@ -148,8 +146,7 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
-     * @notice Inactivate the token
-     * @param token The token address to inactivate
+     * @inheritdoc IRegistry
      */
     function inactivateToken(address token) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
