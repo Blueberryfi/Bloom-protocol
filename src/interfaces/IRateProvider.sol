@@ -8,23 +8,13 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
-import {IOracle} from "src/interfaces/IOracle.sol";
-
-contract MockOracle is IOracle {
-    int256 public latestAnswer;
-    uint8 public decimals;
-
-    constructor(uint8 _decimals) {
-       decimals = _decimals;
-    }
-
-    function setAnswer(int256 _answer) external {
-        latestAnswer = _answer;
-    }
-
-    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
-        return (0, latestAnswer, 0, block.timestamp, 0);
-    }
+interface IRateProvider {
+    /**
+     * @dev Returns an 18 decimal fixed point number that is the exchange rate of the token to some other underlying
+     * token. The meaning of this rate depends on the context.
+     * https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/interfaces/contracts/pool-utils/IRateProvider.sol
+     */
+    function getRate() external view returns (uint256);
 }

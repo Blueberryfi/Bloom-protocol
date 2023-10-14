@@ -10,21 +10,29 @@
 
 pragma solidity 0.8.19;
 
-import {IOracle} from "src/interfaces/IOracle.sol";
+import "../interfaces/IRateProvider.sol";
+import {IRegistry} from "../interfaces/IRegistry.sol";
 
-contract MockOracle is IOracle {
-    int256 public latestAnswer;
-    uint8 public decimals;
+/**
+ * @title Bloom TBY Rate Provider
+ * @notice Returns value of TBY in terms of USD.
+ * Bloom controls the oracle's address and updates exchangeRate
+ * every 24 hours at 4pm UTC. This update cadence may change
+ * in the future.
+ */
+contract TBYRateProvider is IRateProvider {
+    IRegistry public immutable registry;
+    address public immutable tby;
 
-    constructor(uint8 _decimals) {
-       decimals = _decimals;
+    constructor(IRegistry _registry, address _tby) {
+        registry = _registry;
+        tby = _tby;
     }
 
-    function setAnswer(int256 _answer) external {
-        latestAnswer = _answer;
-    }
-
-    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
-        return (0, latestAnswer, 0, block.timestamp, 0);
+    /**
+     * @return value of TBY in terms of USD returns an 18 decimal number
+     */
+    function getRate() external view override returns (uint256) {
+        return registry.getExchangeRate(tby);
     }
 }
