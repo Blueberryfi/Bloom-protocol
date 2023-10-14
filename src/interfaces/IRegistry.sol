@@ -8,31 +8,16 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
-
-import "../interfaces/IRateProvider.sol";
-import {IRegistry} from "../interfaces/IRegistry.sol";
+pragma solidity ^0.8.0;
 
 /**
- * @title Bloom TBY Rate Provider
- * @notice Returns value of TBY in terms of USD.
- * Bloom controls the oracle's address and updates exchangeRate
- * every 24 hours at 4pm UTC. This update cadence may change
- * in the future.
+ * @title Bloom Registry interface to return exchangeRate
  */
-contract TBYRateProvider is IRateProvider {
-    IRegistry public immutable registry;
-    address public immutable tby;
-
-    constructor(IRegistry _registry, address _tby) {
-        registry = _registry;
-        tby = _tby;
-    }
-
+interface IRegistry {
     /**
-     * @return value of TBY in terms of USD returns an 18 decimal number
+     * @notice Returns the current exchange rate of the given token
+     * @param token The token address
+     * @return The current exchange rate of the given token
      */
-    function getRate() external view override returns (uint256) {
-        return registry.getExchangeRate(tby);
-    }
+    function getExchangeRate(address token) external view returns (uint256);
 }

@@ -31,11 +31,12 @@ contract ExchangeRateRegistryTest is Test {
 
     address internal treasury = makeAddr("treasury");
     address internal registryOwner = makeAddr("owner");
+    address internal factory = makeAddr("factory");
 
     MockBPSFeed internal feed;
     ExchangeRateRegistry internal registry;
 
-    uint256 internal constant ORACLE_RATE = 10200;
+    uint256 internal constant ORACLE_RATE = 1.5e4;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant LENDER_RETURN_FEE = 1000;
     uint256 internal constant SCALER = 1e14;
@@ -80,48 +81,18 @@ contract ExchangeRateRegistryTest is Test {
             symbol: "TBT-1"
         });
 
-        registry = new ExchangeRateRegistry();
+        registry = new ExchangeRateRegistry(registryOwner, factory);
     }
 
-    function test_InitializeRegistry() public {
-        assertEq(registry.isRegistryInitialized(), false);
-        registry.initialize(registryOwner);
-        assertEq(registry.isRegistryInitialized(), true);
-    }
-
-    function test_ExpectRevertWhenDoubleInitializing() public {
-        registry.initialize(registryOwner);
-        assertEq(registry.isRegistryInitialized(), true);
-        vm.prank(registryOwner);
-        vm.expectRevert("ExchangeRateRegistry: contract is already initialized");
-        registry.initialize(registryOwner);
-    }
-
-    function test_ExpectRevertWhenRandoInitializes() public {
-        registry.initialize(registryOwner);
-        assertEq(registry.isRegistryInitialized(), true);
-        
-        address rando = makeAddr("rando");        
-        vm.prank(rando);
-        
-        vm.expectRevert("Ownable: caller is not the owner");
-        registry.initialize(registryOwner);
-    }
-
-    function test_ExpectRevertWhenOwnerIsZero() public {
-        assertEq(registry.isRegistryInitialized(), false);
-
-        vm.expectRevert("ExchangeRateRegistry: owner is the zero address");
-        registry.initialize(address(0));
+    function test_RegistryOwner() public {
+        assertEq(registry.owner(), registryOwner);
     }
 
     function test_GetExchangeRate() public {
-        registry.initialize(registryOwner);
-
         vm.prank(registryOwner);
         skip(COMMIT_PHASE);
         
-        registry.registerToken(address(billyToken), address(pool));
+        registry.registerToken(address(billyToken), pool);
         assertEq(registry.getExchangeRate(address(billyToken)), STARTING_EXCHANGE_RATE);
 
         uint256 testingIntervals = 5;
@@ -136,5 +107,23 @@ contract ExchangeRateRegistryTest is Test {
 
             assertEq(registry.getExchangeRate(address(billyToken)), expectedRate);
         }
+
+        // Expect revert if token is not registered
+        vm.expectRevert(ExchangeRateRegistry.TokenNotRegistered.selector);
+        registry.getExchangeRate(address(stableToken));
+    }
+
+    function test_BloomFactoryQueries() public {
+        assertEq(registry.getBloomFactory(), factory);
+
+        // New factory address
+        address newFactory = makeAddr("factory");
+
+        // Fail when not called by owner
+        vm.expectRevert("Ownable: caller is not the owner");
+        registry.updateBloomFactory(newFactory);
+        
+        vm.prank(registryOwner);
+        registry.updateBloomFactory(newFactory);
     }
 }

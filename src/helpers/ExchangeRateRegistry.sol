@@ -10,11 +10,12 @@
 
 pragma solidity 0.8.19;
 
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-import "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
+import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import {EnumerableSet} from "openzeppelin-contracts/contracts/utils/structs/EnumerableSet.sol";
 
-import "../interfaces/IBPSFeed.sol";
-import "../interfaces/IBloomPool.sol";
+import {IBPSFeed} from "../interfaces/IBPSFeed.sol";
+import {IBloomPool} from "../interfaces/IBloomPool.sol";
+import {IRegistry} from "../interfaces/IRegistry.sol";
 
 /**
  * @title ExchangeRateRegistry
@@ -24,20 +25,14 @@ import "../interfaces/IBloomPool.sol";
  * 2. Exchange rate of each TBY
  * 3. If TBY is active or not
  */
-contract ExchangeRateRegistry is Ownable {
+contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public constant INITIAL_FEED_RATE = 1e4;
-    uint256 public constant BASE_RATE = 1e18;
-    uint256 public constant ONE_YEAR = 360 days;
-    uint256 public constant SCALER = 1e14;
-
-    struct TokenInfo {
-        bool registered;
-        bool active;
-        address pool;
-        uint256 createdAt;
-    }
+    address private _bloomFactory;
+    uint256 private constant INITIAL_FEED_RATE = 1e4;
+    uint256 private constant BASE_RATE = 1e18;
+    uint256 private constant ONE_YEAR = 360 days;
+    uint256 private constant SCALER = 1e14;
 
     /**
      * @notice Mapping of token to TokenInfo
@@ -53,11 +48,13 @@ contract ExchangeRateRegistry is Ownable {
      * @dev Group of inactive tokens
      */
     EnumerableSet.AddressSet internal _inactiveTokens;
-
-    /**
-     * @dev Indicates that the contract has been _initialized
-     */
-    bool internal _initialized;
+    
+    struct TokenInfo {
+        bool registered;
+        bool active;
+        address pool;
+        uint256 createdAt;
+    }
 
     /**
      * @notice Emitted when token is registered
@@ -83,23 +80,23 @@ contract ExchangeRateRegistry is Ownable {
      */
     event TokenInactivated(address token);
 
-    /**
-     * @dev Function to initialize the contract
-     * @dev Can an only be called once by the deployer of the contract
-     * @dev The caller is responsible for ensuring that both the new owner and the token contract are configured correctly
-     * @param newOwner The address of the new owner of the exchange rate updater contract, can either be an EOA or a contract
-     */
-    function initialize(address newOwner) external onlyOwner {
-        require(
-            !_initialized,
-            "ExchangeRateRegistry: contract is already initialized"
-        );
-        require(
-            newOwner != address(0),
-            "ExchangeRateRegistry: owner is the zero address"
-        );
-        transferOwnership(newOwner);
-        _initialized = true;
+    // Errors
+    error TokenAlreadyRegistered();
+    error TokenNotRegistered();
+    error TokenAlreadyActive();
+    error TokenAlreadyInactive();
+    error InvalidUser();
+
+    modifier onlyFactoryOrOwner() {
+        if (msg.sender != owner() && msg.sender != _bloomFactory) {
+            revert InvalidUser();
+        }
+        _;
+    }
+
+    constructor(address owner, address bloomFactory) Ownable2Step() {
+        _transferOwnership(owner);
+        _bloomFactory = bloomFactory;
     }
 
     /**
@@ -109,35 +106,38 @@ contract ExchangeRateRegistry is Ownable {
      */
     function registerToken(
         address token,
-        address pool
-    ) external onlyOwner {
-        IBloomPool poolContract = IBloomPool(pool);
+        IBloomPool pool
+    ) external onlyFactoryOrOwner {
+        IBloomPool poolContract = pool;
         uint256 createdAt = poolContract.COMMIT_PHASE_END();
 
         TokenInfo storage info = tokenInfos[token];
-        require(
-            !info.registered,
-            "ExchangeRateRegistry: token already registered"
-        );
+        if (info.registered) {
+            revert TokenAlreadyRegistered();
+        }
 
         info.registered = true;
         info.active = true;
-        info.pool = pool;
+        info.pool = address(pool);
         info.createdAt = createdAt;
 
         _activeTokens.add(token);
 
-        emit TokenRegistered(token, pool, createdAt);
+        emit TokenRegistered(token, address(pool), createdAt);
     }
 
     /**
      * @notice Activate the token
      * @param token The token address to activate
      */
-    function activateToken(address token) external onlyOwner {
+    function activateToken(address token) external onlyFactoryOrOwner {
         TokenInfo storage info = tokenInfos[token];
-        require(info.registered, "ExchangeRateRegistry: token not registered");
-        require(!info.active, "ExchangeRateRegistry: token is active");
+        if (!info.registered) {
+            revert TokenNotRegistered();
+        }
+        if (info.active) {
+            revert TokenAlreadyActive();
+        }
 
         info.active = true;
 
@@ -153,7 +153,9 @@ contract ExchangeRateRegistry is Ownable {
      */
     function inactivateToken(address token) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
-        require(info.active, "ExchangeRateRegistry: token is inactive");
+        if (!info.registered) {
+            revert TokenAlreadyInactive();
+        }
 
         info.active = false;
 
@@ -161,6 +163,14 @@ contract ExchangeRateRegistry is Ownable {
         _inactiveTokens.add(token);
 
         emit TokenInactivated(token);
+    }
+
+    /**
+     * @notice Updates the Bloom Factory Address
+     * @param factory The new factory address
+     */
+    function updateBloomFactory(address factory) external onlyOwner {
+        _bloomFactory = factory;
     }
 
     /**
@@ -178,13 +188,6 @@ contract ExchangeRateRegistry is Ownable {
     }
 
     /**
-     * @notice Return true if the registry has been initialized
-     */
-    function isRegistryInitialized() external view returns (bool) {
-        return _initialized;
-    }
-
-    /**
      * @notice Returns the current exchange rate of the given token
      * @param token The token address
      * @return The current exchange rate of the given token
@@ -193,24 +196,32 @@ contract ExchangeRateRegistry is Ownable {
         return _getExchangeRate(token);
     }
 
+    /**
+     * @notice Returns the Bloom Factory address 
+     */
+    function getBloomFactory() external view returns (address) {
+        return _bloomFactory;
+    }
+
     function _getExchangeRate(address token) internal view returns (uint256) {
         TokenInfo storage info = tokenInfos[token];
-        require(info.registered, "ExchangeRateRegistry: token not registered");
+        if (!info.registered) {
+            revert TokenNotRegistered();
+        }
 
         IBloomPool pool = IBloomPool(info.pool);
-        uint256 lenderFee = pool.LENDER_RETURN_FEE();
-        uint256 duration = pool.POOL_PHASE_DURATION();
         IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
+        uint256 duration = pool.POOL_PHASE_DURATION();
 
         uint256 rate = (bpsFeed.getWeightedRate() - INITIAL_FEED_RATE) * SCALER;
         uint256 timeElapsed = block.timestamp - info.createdAt;
         if (timeElapsed > duration) {
             timeElapsed = duration;
         }
-        uint256 adjustedLenderFee = (lenderFee * SCALER);
+        uint256 adjustedLenderFee = pool.LENDER_RETURN_FEE() * SCALER;
         
-        uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee) / 1e18) * timeElapsed) / 
-            ONE_YEAR;
+        uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee)) * timeElapsed) / 
+            ONE_YEAR / 1e18;
 
         return BASE_RATE + delta;
     }
