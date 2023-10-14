@@ -126,7 +126,8 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
-     * @inheritdoc IRegistry
+     * @notice Activate the token
+     * @param token The token address to activate
      */
     function activateToken(address token) external onlyFactoryOrOwner {
         TokenInfo storage info = tokenInfos[token];
@@ -146,7 +147,8 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
-     * @inheritdoc IRegistry
+     * @notice Inactivate the token
+     * @param token The token address to inactivate
      */
     function inactivateToken(address token) external onlyOwner {
         TokenInfo storage info = tokenInfos[token];
