@@ -53,9 +53,9 @@ contract SwapFacilityTest is Test {
         vm.label(address(billyToken), "BillyToken");
         randomToken = new MockERC20(18);
         vm.label(address(randomToken), "RandomToken");
-        usdcOracle = new MockOracle();
+        usdcOracle = new MockOracle(8);
         vm.label(address(usdcOracle), "StableTokenOracle");
-        ib01Oracle = new MockOracle();
+        ib01Oracle = new MockOracle(8);
         vm.label(address(ib01Oracle), "BillyTokenOracle");
         usdcOracle.setAnswer(100000000);
         ib01Oracle.setAnswer(10000000000);
