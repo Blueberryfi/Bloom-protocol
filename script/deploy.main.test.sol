@@ -150,10 +150,16 @@ contract Deploy is Test, Script {
     */
 
     function _deployBloomFactory() internal returns (BloomFactory) {
-        BloomFactory factory = new BloomFactory();
-        vm.label(address(factory), "BloomFactory");
-        console2.log("BloomFactory deployed at:", address(factory));
-        return factory;
+
+        if (DEPLOY_FACTORY) {
+            BloomFactory factory = new BloomFactory();
+            vm.label(address(factory), "BloomFactory");
+            console2.log("BloomFactory deployed at:", address(factory));
+            return factory;
+        } else {
+            console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
+            return BloomFactory(BLOOM_FACTORY_ADDRESS);
+        }
     }
 
     function _deploySwapFacility() internal {
