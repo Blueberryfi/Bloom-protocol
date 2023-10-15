@@ -117,7 +117,7 @@ contract Deploy is Test, Script {
             exchangeRateRegistry,
             poolParams,
             swapFacilityParams,
-            vm.getNonce(msg.sender)
+            vm.getNonce(address(factory))
         );
         vm.label(address(pool), "BloomPool");
         console2.log("BloomPool deployed at:", address(pool));

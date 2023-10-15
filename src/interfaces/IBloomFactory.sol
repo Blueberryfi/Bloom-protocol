@@ -63,7 +63,7 @@ interface IBloomFactory {
      * @param billToken Address of the bill token
      * @param poolParams Parameters that are used for the pool
      * @param swapFacilityParams Parameters that are used for the swap facility
-     * @param deployerNonce Nonce of the factory
+     * @param factoryNonce Nonce of the factory
      * @return Address of the new pool
      */
     function create(
@@ -74,7 +74,7 @@ interface IBloomFactory {
         IRegistry exchangeRateRegistry,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
-        uint256 deployerNonce
+        uint256 factoryNonce
     ) external returns (BloomPool);
 
 }

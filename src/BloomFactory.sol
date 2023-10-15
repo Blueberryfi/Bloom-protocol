@@ -47,10 +47,10 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         IRegistry exchangeRateRegistry,
         PoolParams calldata poolParams,
         SwapFacilityParams calldata swapFacilityParams,
-        uint256 deployerNonce
+        uint256 factoryNonce
     ) external override onlyOwner returns (BloomPool) {
         // Precompute the address of the BloomPool
-        address expectedPoolAddress = LibRLP.computeAddress(address(this), deployerNonce + 1);
+        address expectedPoolAddress = LibRLP.computeAddress(address(this), factoryNonce + 1);
         
         // Deploys SwapFacility
         SwapFacility swapFacility = new SwapFacility(

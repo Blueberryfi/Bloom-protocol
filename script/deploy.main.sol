@@ -111,7 +111,7 @@ contract Deploy is Test, Script {
             exchangeRateRegistry,
             poolParams,
             swapFacilityParams,
-            vm.getNonce(msg.sender)
+            vm.getNonce(address(factory))
         );
         vm.label(address(pool), "BloomPool");
         console2.log("BloomPool deployed at:", address(pool));
@@ -156,45 +156,45 @@ contract Deploy is Test, Script {
         return factory;
     }
 
-    function _deploySwapFacility() internal {
-        uint256 deployerNonce = vm.getNonce(msg.sender);
+    // function _deploySwapFacility() internal {
+    //     uint256 deployerNonce = vm.getNonce(msg.sender);
 
-        swap = new SwapFacility(
-            UNDERLYING_TOKEN, 
-            BILL_TOKEN,
-            USDCUSD,
-            IB01USD,
-            IWhitelist(address(WHITELIST_SWAP)),
-            SPREAD,
-            LibRLP.computeAddress(msg.sender, deployerNonce + 1),
-            MIN_STABLE_VALUE,
-            MAX_BILL_VALUE
-        );
-        vm.label(address(swap), "SwapFacility");
-        console2.log("SwapFacility deployed at:", address(swap));
-    }
+    //     swap = new SwapFacility(
+    //         UNDERLYING_TOKEN, 
+    //         BILL_TOKEN,
+    //         USDCUSD,
+    //         IB01USD,
+    //         IWhitelist(address(WHITELIST_SWAP)),
+    //         SPREAD,
+    //         LibRLP.computeAddress(msg.sender, deployerNonce + 1),
+    //         MIN_STABLE_VALUE,
+    //         MAX_BILL_VALUE
+    //     );
+    //     vm.label(address(swap), "SwapFacility");
+    //     console2.log("SwapFacility deployed at:", address(swap));
+    // }
 
-    function _deployBloomPool() internal {
-        pool = new BloomPool(
-            UNDERLYING_TOKEN,
-            BILL_TOKEN,
-            IWhitelist(address(WHITELIST_BORROW)),
-            address(swap),
-            TREASURY,
-            address(LENDER_RETURN_BPS_FEED),
-            EMERGENCY_HANDLER,
-            50e4,
-            10.0e6,
-            commitPhaseDuration,
-            preHoldSwapTimeout,
-            poolPhaseDuration,
-            300, // 3%
-            0, // 0%
-            "Term Bound Yield 6 month feb-2024-Batch2",
-            "TBY-feb-2024-Batch2"
-        );
-        console2.log("BloomPool deployed at:", address(pool));
-    }
+    // function _deployBloomPool() internal {
+    //     pool = new BloomPool(
+    //         UNDERLYING_TOKEN,
+    //         BILL_TOKEN,
+    //         IWhitelist(address(WHITELIST_BORROW)),
+    //         address(swap),
+    //         TREASURY,
+    //         address(LENDER_RETURN_BPS_FEED),
+    //         EMERGENCY_HANDLER,
+    //         50e4,
+    //         10.0e6,
+    //         commitPhaseDuration,
+    //         preHoldSwapTimeout,
+    //         poolPhaseDuration,
+    //         300, // 3%
+    //         0, // 0%
+    //         "Term Bound Yield 6 month feb-2024-Batch2",
+    //         "TBY-feb-2024-Batch2"
+    //     );
+    //     console2.log("BloomPool deployed at:", address(pool));
+    // }
 
     function _deployExchangeRateRegistry(address bloomFactory) internal returns (IRegistry) {
         if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
