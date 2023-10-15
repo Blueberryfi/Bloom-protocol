@@ -18,15 +18,22 @@ import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
 import {BloomPool} from "../src/BloomPool.sol";
 import {SwapFacility} from "../src/SwapFacility.sol";
-import {MockERC20} from "../test/mock/MockERC20.sol";
+import {ExchangeRateRegistry} from "../src/helpers/ExchangeRateRegistry.sol";
+import {TBYRateProviderFactory} from "../src/helpers/TBYRateProviderFactory.sol";
+import {BloomFactory, IBloomFactory} from "../src/BloomFactory.sol";
 
 import {ISwapFacility} from "../src/interfaces/ISwapFacility.sol";
 import {IWhitelist} from "../src/interfaces/IWhitelist.sol";
+import {IRegistry} from "../src/interfaces/IRegistry.sol";
+
 
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
     address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
     address internal constant EMERGENCY_HANDLER = 0x989B1a8EefaC6bF66a159621D49FaF4A939b452D;
+    // Replace with real address if we arent deploying a new factory or registry
+    address internal constant BLOOM_FACTORY_ADDRESS = address(0);
+    address internal constant EXCHANGE_RATE_REGISTRY = address(0);
 
     address internal constant UNDERLYING_TOKEN = 0xa1c511b3C5Be3C94089203845D6247D1696D7Fb9; //
     address internal constant BILL_TOKEN = 0x106c5522A76818cEdf06E885E8a8A63eb6Cf2a4b;
@@ -52,11 +59,15 @@ contract Deploy is Test, Script {
     uint256 internal constant commitPhaseDuration = 10 days;
     uint256 internal constant poolPhaseDuration = 2 days;
     uint256 internal constant preHoldSwapTimeout = 1 days;
+    // True if we want to deploy a factory. False if we want to use an existing one
+    bool internal constant DEPLOY_FACTORY = true;
+    bool internal constant DEPLOY_EXCHANGE_RATE_REGISTRY = true;
 
     // Aux
-    BPSFeed internal lenderReturnBpsFeed;
-    //MerkleWhitelist internal whitelistBorrow;
-    //MerkleWhitelist internal whitelistSwap;
+    // BPSFeed internal lenderReturnBpsFeed;
+    // BPSFeed internal lenderReturnBpsFeed;
+    // MerkleWhitelist internal whitelistBorrow;
+    // MerkleWhitelist internal whitelistSwap;
 
     // Protocol
     BloomPool internal pool;
@@ -66,88 +77,143 @@ contract Deploy is Test, Script {
         vm.startBroadcast();
 
         // Deploy aux items
-        //_deployBillyToken();
         // _deployMerkleWhitelistBorrow();
         // _deployMerkleWhitelistSwap();
-        //_deployBPSFeed();
+        // _deployBPSFeed();
 
         // Deploy protocol
-        _deploySwapFacility();
-        _deployBloomPool();
+        BloomFactory factory = _deployBloomFactory();
+
+        IRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
+
+        IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
+            TREASURY,
+            address(WHITELIST),
+            address(BPSFEED),
+            EMERGENCY_HANDLER,
+            50e4,
+            10.0e6,
+            commitPhaseDuration,
+            preHoldSwapTimeout,
+            poolPhaseDuration,
+            300, // 3%
+            0 // 0%
+        );
+
+        IBloomFactory.SwapFacilityParams memory swapFacilityParams = IBloomFactory.SwapFacilityParams(
+            USDCUSD,
+            IB01USD,
+            address(WHITELIST),
+            SPREAD,
+            MIN_STABLE_VALUE,
+            MAX_BILL_VALUE
+        );
+
+        pool = factory.create(
+            "Term Bound Yield 6 month feb-2024-Batch2",
+            "TBY-feb-2024-Batch2",
+            UNDERLYING_TOKEN,
+            BILL_TOKEN,
+            exchangeRateRegistry,
+            poolParams,
+            swapFacilityParams,
+            vm.getNonce(msg.sender)
+        );
+        vm.label(address(pool), "BloomPool");
+        console2.log("BloomPool deployed at:", address(pool));
+
+        swap = SwapFacility(pool.SWAP_FACILITY());
+        vm.label(address(swap), "SwapFacility");
+        console2.log("SwapFacility deployed at:", address(swap));
 
         vm.stopBroadcast();
     }
 
-    // function _deployBillyToken() internal {
-    //     UNDERLYING_TOKEN = new MockERC20(6);
-    //     vm.label(address(UNDERLYING_TOKEN), "UnderlyingToken");
-    //     BILL_TOKEN = new MockERC20(18);
-    //     vm.label(address(BILL_TOKEN), "BillyToken");
-    // }
-
-    //function _deployMerkleWhitelistBorrow() internal {
-    //    whitelistBorrow = new MerkleWhitelist(
-    //        INITIALROOTBORROW,
-    //        INITIALOWNER
-    //    );
-    //    vm.label(address(whitelistBorrow), "MerkleWhitelistBorrow");
-    //    console2.log("MerkleWhitelist deployed at:", address(whitelistBorrow));
-    //}
-
-    //function _deployMerkleWhitelistSwap() internal {
-    //    whitelistSwap = new MerkleWhitelist(
-    //        INITIALROOTSWAP,
-    //        INITIALOWNER
-    //    );
-    //    vm.label(address(whitelistSwap), "MerkleWhitelistSwap");
-    //    console2.log("MerkleWhitelist deployed at:", address(whitelistSwap));
-    //}
-
-    //     function _deployBPSFeed() internal {
-    //     lenderReturnBpsFeed = new BPSFeed();
-    //     vm.label(address(lenderReturnBpsFeed), "BPSFeed");
-    //     console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
-    // }
-
-    function _deploySwapFacility() internal {
-        uint256 deployerNonce = vm.getNonce(msg.sender);
-
-        swap = new SwapFacility(
-            UNDERLYING_TOKEN,        // address(UNDERLYING_TOKEN), 
-            BILL_TOKEN,        // address(BILL_TOKEN),
-            USDCUSD,
-            IB01USD,
-            IWhitelist(address(WHITELIST)),         
-            //IWhitelist(address(whitelistSwap)),
-            SPREAD,
-            LibRLP.computeAddress(msg.sender, deployerNonce +1),
-            MIN_STABLE_VALUE,
-            MAX_BILL_VALUE
+    /* 
+    function _deployMerkleWhitelistBorrow() internal {
+        whitelistBorrow = new MerkleWhitelist(
+            INITIALROOTBORROW,
+            INITIALOWNER
         );
-        vm.label(address(swap), "SwapFacility");
-        console2.log("SwapFacility deployed at:", address(swap));
+        vm.label(address(whitelistBorrow), "MerkleWhitelist");
+        console2.log("MerkleWhitelist deployed at:", address(whitelistBorrow));
     }
 
-    function _deployBloomPool() internal {
-        pool = new BloomPool(
-            UNDERLYING_TOKEN,    // address(UNDERLYING_TOKEN),
-            BILL_TOKEN,          // address(BILL_TOKEN),
-            IWhitelist(address(WHITELIST)),           // 
-            //IWhitelist(address(whitelistBorrow)),
-            address(swap),
-            TREASURY,
-            BPSFEED,             // address(lenderReturnBpsFeed),
-            EMERGENCY_HANDLER,
-            50e4,
-            1.0e6,
-            commitPhaseDuration,
-            preHoldSwapTimeout,
-            poolPhaseDuration,
-            300,
-            3000,
-            "Term Bound Yield 6 month 2023-2-4",
-            "TBY-Feb4"
-        );
-        console2.log("BloomPool deployed at:", address(pool));
+    function _deployMerkleWhitelistSwap() internal {
+        whitelistSwap = new MerkleWhitelist(
+        INITIALROOTSWAP,
+        INITIALOWNER
+    );
+        vm.label(address(whitelistSwap), "MerkleWhitelist");
+        console2.log("MerkleWhitelist deployed at:", address(whitelistSwap));
     }
+
+    function _deployBPSFeed() internal {
+        lenderReturnBpsFeed = new BPSFeed();
+        vm.label(address(lenderReturnBpsFeed), "BPSFeed");
+        console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
+    }
+    */
+
+    function _deployBloomFactory() internal returns (BloomFactory) {
+        BloomFactory factory = new BloomFactory();
+        vm.label(address(factory), "BloomFactory");
+        console2.log("BloomFactory deployed at:", address(factory));
+        return factory;
+    }
+
+    // function _deploySwapFacility() internal {
+    //     uint256 deployerNonce = vm.getNonce(msg.sender);
+
+    //     swap = new SwapFacility(
+    //         UNDERLYING_TOKEN, 
+    //         BILL_TOKEN,
+    //         USDCUSD,
+    //         IB01USD,
+    //         IWhitelist(address(WHITELIST)),
+    //         SPREAD,
+    //         LibRLP.computeAddress(msg.sender, deployerNonce + 1),
+    //         MIN_STABLE_VALUE,
+    //         MAX_BILL_VALUE
+    //     );
+    //     vm.label(address(swap), "SwapFacility");
+    //     console2.log("SwapFacility deployed at:", address(swap));
+    // }
+
+    // function _deployBloomPool() internal {
+    //     pool = new BloomPool(
+    //         UNDERLYING_TOKEN,
+    //         BILL_TOKEN,
+    //         IWhitelist(address(WHITELIST)),
+    //         address(swap),
+    //         TREASURY,
+    //         address(BPSFEED),
+    //         EMERGENCY_HANDLER,
+    //         50e4,
+    //         10.0e6,
+    //         commitPhaseDuration,
+    //         preHoldSwapTimeout,
+    //         poolPhaseDuration,
+    //         300, // 3%
+    //         0, // 0%
+    //         "Term Bound Yield 6 month feb-2024-Batch2",
+    //         "TBY-feb-2024-Batch2"
+    //     );
+    //     console2.log("BloomPool deployed at:", address(pool));
+    // }
+
+    function _deployExchangeRateRegistry(address bloomFactory) internal returns (IRegistry) {
+        if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
+            address factoryAddress = DEPLOY_FACTORY ? address(bloomFactory) : BLOOM_FACTORY_ADDRESS;
+
+            ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, factoryAddress);
+            vm.label(address(registry), "ExchangeRateRegistry");
+            console2.log("ExchangeRateRegistry deployed at: ", address(registry));
+            return registry;
+        } else {
+            console2.log("Registry previously deployed at: ", EXCHANGE_RATE_REGISTRY);
+            return IRegistry(EXCHANGE_RATE_REGISTRY);
+        }
+    }
+
 }

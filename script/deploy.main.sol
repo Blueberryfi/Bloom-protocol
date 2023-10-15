@@ -18,17 +18,22 @@ import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
 import {BloomPool} from "../src/BloomPool.sol";
 import {SwapFacility} from "../src/SwapFacility.sol";
+import {ExchangeRateRegistry} from "../src/helpers/ExchangeRateRegistry.sol";
+import {TBYRateProviderFactory} from "../src/helpers/TBYRateProviderFactory.sol";
+import {BloomFactory, IBloomFactory} from "../src/BloomFactory.sol";
 
 import {ISwapFacility} from "../src/interfaces/ISwapFacility.sol";
 import {IWhitelist} from "../src/interfaces/IWhitelist.sol";
+import {IRegistry} from "../src/interfaces/IRegistry.sol";
+
 
 contract Deploy is Test, Script {
+    address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
     address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
     address internal constant EMERGENCY_HANDLER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
-    // True if we want to deploy a factory. False if we want to use an existing one
-    bool internal constant DEPLOY_FACTORY = true;
-    // Replace with real address if we arent deploying a new factory
+    // Replace with real address if we arent deploying a new factory or registry
     address internal constant BLOOM_FACTORY_ADDRESS = address(0);
+    address internal constant EXCHANGE_RATE_REGISTRY = address(0);
 
     address internal constant UNDERLYING_TOKEN = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC
     address internal constant BILL_TOKEN = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5; //bIB01
@@ -49,6 +54,10 @@ contract Deploy is Test, Script {
     uint256 internal constant poolPhaseDuration = 180 days;
     uint256 internal constant preHoldSwapTimeout = 7 days;
 
+    // True if we want to deploy a factory. False if we want to use an existing one
+    bool internal constant DEPLOY_FACTORY = true;
+    bool internal constant DEPLOY_EXCHANGE_RATE_REGISTRY = true;
+
     // Aux
     // BPSFeed internal lenderReturnBpsFeed;
     // MerkleWhitelist internal whitelistBorrow;
@@ -67,8 +76,49 @@ contract Deploy is Test, Script {
         // _deployBPSFeed();
 
         // Deploy protocol
-        address factory = _deployBloomFactory();
+        BloomFactory factory = _deployBloomFactory();
 
+        IRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
+
+        IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
+            TREASURY,
+            address(WHITELIST_BORROW),
+            address(LENDER_RETURN_BPS_FEED),
+            EMERGENCY_HANDLER,
+            50e4,
+            10.0e6,
+            commitPhaseDuration,
+            preHoldSwapTimeout,
+            poolPhaseDuration,
+            300, // 3%
+            0 // 0%
+        );
+
+        IBloomFactory.SwapFacilityParams memory swapFacilityParams = IBloomFactory.SwapFacilityParams(
+            USDCUSD,
+            IB01USD,
+            address(WHITELIST_SWAP),
+            SPREAD,
+            MIN_STABLE_VALUE,
+            MAX_BILL_VALUE
+        );
+
+        pool = factory.create(
+            "Term Bound Yield 6 month feb-2024-Batch2",
+            "TBY-feb-2024-Batch2",
+            UNDERLYING_TOKEN,
+            BILL_TOKEN,
+            exchangeRateRegistry,
+            poolParams,
+            swapFacilityParams,
+            vm.getNonce(msg.sender)
+        );
+        vm.label(address(pool), "BloomPool");
+        console2.log("BloomPool deployed at:", address(pool));
+
+        swap = SwapFacility(pool.SWAP_FACILITY());
+        vm.label(address(swap), "SwapFacility");
+        console2.log("SwapFacility deployed at:", address(swap));
 
         vm.stopBroadcast();
     }
@@ -98,6 +148,13 @@ contract Deploy is Test, Script {
         console2.log("BPSFeed deployed at:", address(lenderReturnBpsFeed));
     }
     */
+
+    function _deployBloomFactory() internal returns (BloomFactory) {
+        BloomFactory factory = new BloomFactory();
+        vm.label(address(factory), "BloomFactory");
+        console2.log("BloomFactory deployed at:", address(factory));
+        return factory;
+    }
 
     function _deploySwapFacility() internal {
         uint256 deployerNonce = vm.getNonce(msg.sender);
@@ -138,4 +195,19 @@ contract Deploy is Test, Script {
         );
         console2.log("BloomPool deployed at:", address(pool));
     }
+
+    function _deployExchangeRateRegistry(address bloomFactory) internal returns (IRegistry) {
+        if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
+            address factoryAddress = DEPLOY_FACTORY ? address(bloomFactory) : BLOOM_FACTORY_ADDRESS;
+
+            ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, factoryAddress);
+            vm.label(address(registry), "ExchangeRateRegistry");
+            console2.log("ExchangeRateRegistry deployed at: ", address(registry));
+            return registry;
+        } else {
+            console2.log("Registry previously deployed at: ", EXCHANGE_RATE_REGISTRY);
+            return IRegistry(EXCHANGE_RATE_REGISTRY);
+        }
+    }
+
 }

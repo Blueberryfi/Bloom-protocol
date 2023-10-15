@@ -17,8 +17,8 @@ import {TBYRateProviderFactory} from "src/helpers/TBYRateProviderFactory.sol";
 
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
-    // TODO: Update this address
-    address internal constant BLOOM_FACTORY_ADDRESS = 0x000000000;
+    // TODO: Update this address with the Bloom Factory
+    address internal constant BLOOM_FACTORY_ADDRESS = address(0);
 
     function run() public {
         vm.startBroadcast();
