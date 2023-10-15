@@ -52,19 +52,16 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     struct TokenInfo {
         bool registered;
         bool active;
-        address pool;
         uint256 createdAt;
     }
 
     /**
      * @notice Emitted when token is registered
      * @param token The token address to register
-     * @param pool The pool associated with the token
      * @param createdAt Timestamp of the token creation
      */
     event TokenRegistered(
         address indexed token,
-        address pool,
         uint256 createdAt
     );
 
@@ -103,26 +100,22 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     /**
      * @inheritdoc IRegistry
      */
-    function registerToken(
-        address token,
-        IBloomPool pool
-    ) external onlyFactoryOrOwner {
-        IBloomPool poolContract = pool;
+    function registerToken(IBloomPool token) external onlyFactoryOrOwner {
+        IBloomPool poolContract = token;
         uint256 createdAt = poolContract.COMMIT_PHASE_END();
 
-        TokenInfo storage info = tokenInfos[token];
+        TokenInfo storage info = tokenInfos[address(token)];
         if (info.registered) {
             revert TokenAlreadyRegistered();
         }
 
         info.registered = true;
         info.active = true;
-        info.pool = address(pool);
         info.createdAt = createdAt;
 
-        _activeTokens.add(token);
+        _activeTokens.add(address(token));
 
-        emit TokenRegistered(token, address(pool), createdAt);
+        emit TokenRegistered(address(token), createdAt);
     }
 
     /**
@@ -208,7 +201,7 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
             revert TokenNotRegistered();
         }
 
-        IBloomPool pool = IBloomPool(info.pool);
+        IBloomPool pool = IBloomPool(token);
         IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
         uint256 duration = pool.POOL_PHASE_DURATION();
 

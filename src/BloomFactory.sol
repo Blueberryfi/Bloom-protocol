@@ -97,7 +97,7 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         _lastCreatedPool = address(bloomPool);
 
         // Register the pool in the exchange rate registry & activate the token
-        exchangeRateRegistry.registerToken(address(bloomPool), bloomPool);
+        exchangeRateRegistry.registerToken(bloomPool);
 
         emit NewBloomPoolCreated(address(bloomPool), address(swapFacility));
 
