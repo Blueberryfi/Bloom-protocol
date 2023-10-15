@@ -17,7 +17,8 @@ import {TBYRateProviderFactory} from "src/helpers/TBYRateProviderFactory.sol";
 
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
-    address internal constant FACTORY_ADDRESS = address(0);
+    // TODO: Update this address with the Bloom Factory
+    address internal constant BLOOM_FACTORY_ADDRESS = address(0);
 
     function run() public {
         vm.startBroadcast();
@@ -29,7 +30,7 @@ contract Deploy is Test, Script {
     }
 
     function _deployExchangeRateRegistry() internal {
-        ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, FACTORY_ADDRESS);
+        ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, BLOOM_FACTORY_ADDRESS);
         vm.label(address(registry), "ExchangeRateRegistry");
         console2.log("ExchangeRateRegistry deployed at: ", address(registry));
     }
