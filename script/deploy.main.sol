@@ -25,6 +25,10 @@ import {IWhitelist} from "../src/interfaces/IWhitelist.sol";
 contract Deploy is Test, Script {
     address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
     address internal constant EMERGENCY_HANDLER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
+    // True if we want to deploy a factory. False if we want to use an existing one
+    bool internal constant DEPLOY_FACTORY = true;
+    // Replace with real address if we arent deploying a new factory
+    address internal constant BLOOM_FACTORY_ADDRESS = address(0);
 
     address internal constant UNDERLYING_TOKEN = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48; // USDC
     address internal constant BILL_TOKEN = 0xCA30c93B02514f86d5C86a6e375E3A330B435Fb5; //bIB01
@@ -63,8 +67,8 @@ contract Deploy is Test, Script {
         // _deployBPSFeed();
 
         // Deploy protocol
-        _deploySwapFacility();
-        _deployBloomPool();
+        address factory = _deployBloomFactory();
+
 
         vm.stopBroadcast();
     }
