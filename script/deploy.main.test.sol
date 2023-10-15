@@ -150,7 +150,6 @@ contract Deploy is Test, Script {
     */
 
     function _deployBloomFactory() internal returns (BloomFactory) {
-
         if (DEPLOY_FACTORY) {
             BloomFactory factory = new BloomFactory();
             vm.label(address(factory), "BloomFactory");
