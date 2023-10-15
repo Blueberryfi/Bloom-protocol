@@ -99,10 +99,9 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
         _bloomFactory = bloomFactory;
     }
 
+
     /**
-     * @notice Register new token to the registry
-     * @param token The token address to register
-     * @param pool The pool associated with the token
+     * @inheritdoc IRegistry
      */
     function registerToken(
         address token,
