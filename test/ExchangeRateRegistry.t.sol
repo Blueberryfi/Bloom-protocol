@@ -92,8 +92,8 @@ contract ExchangeRateRegistryTest is Test {
         vm.prank(registryOwner);
         skip(COMMIT_PHASE);
         
-        registry.registerToken(address(billyToken), pool);
-        assertEq(registry.getExchangeRate(address(billyToken)), STARTING_EXCHANGE_RATE);
+        registry.registerToken(pool);
+        assertEq(registry.getExchangeRate(address(pool)), STARTING_EXCHANGE_RATE);
 
         uint256 testingIntervals = 5;
 
@@ -105,7 +105,7 @@ contract ExchangeRateRegistryTest is Test {
             uint256 lenderShare = valueAccrued * (LENDER_RETURN_FEE * SCALER) / 1e18;
             uint256 expectedRate = STARTING_EXCHANGE_RATE + valueAccrued - lenderShare;
 
-            assertEq(registry.getExchangeRate(address(billyToken)), expectedRate);
+            assertEq(registry.getExchangeRate(address(pool)), expectedRate);
         }
 
         // Expect revert if token is not registered
