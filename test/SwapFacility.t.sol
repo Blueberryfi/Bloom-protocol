@@ -53,12 +53,12 @@ contract SwapFacilityTest is Test {
         vm.label(address(billyToken), "BillyToken");
         randomToken = new MockERC20(18);
         vm.label(address(randomToken), "RandomToken");
-        usdcOracle = new MockOracle();
+        usdcOracle = new MockOracle(8);
         vm.label(address(usdcOracle), "StableTokenOracle");
-        ib01Oracle = new MockOracle();
+        ib01Oracle = new MockOracle(8);
         vm.label(address(ib01Oracle), "BillyTokenOracle");
-        usdcOracle.setAnswer(100000000);
-        ib01Oracle.setAnswer(10000000000);
+        usdcOracle.setAnswer(1e8);
+        ib01Oracle.setAnswer(100e8);
         whitelist = new MockWhitelist();
 
         uint256 deployerNonce = vm.getNonce(address(this));
@@ -92,7 +92,7 @@ contract SwapFacilityTest is Test {
     }
 
     function initPreHoldSwap() public {
-        stableToken.mint(address(pool), 10000_000000);
+        stableToken.mint(address(pool), 10000e6);
         pool.initiatePreHoldSwap();
     }
 
@@ -257,7 +257,7 @@ contract SwapFacilityTest is Test {
         pool.initiatePostHoldSwap();
 
         startHoax(user);
-        uint256 inAmount = 1001_500000;
+        uint256 inAmount = 10015e5;
         stableToken.mint(user, inAmount);
         stableToken.approve(address(swap), inAmount);
 
@@ -268,7 +268,7 @@ contract SwapFacilityTest is Test {
         swap.swap(address(stableToken), address(billyToken), inAmount, new bytes32[](0));
 
         assertEq(billyToken.balanceOf(user), beforeBalance + outAmount);
-        assertEq(stableToken.balanceOf(address(pool)), 1001_500000);
+        assertEq(stableToken.balanceOf(address(pool)), 10015e5);
 
         vm.stopPrank();
     }

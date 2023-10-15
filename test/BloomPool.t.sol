@@ -29,6 +29,7 @@ contract BloomPoolTest is Test {
     MockWhitelist internal whitelist;
     MockSwapFacility internal swap;
     address internal treasury = makeAddr("treasury");
+    address internal emergencyHandler = makeAddr("emergencyHandler");
     MockBPSFeed internal feed;
 
     uint256 internal commitPhaseDuration;
@@ -49,6 +50,7 @@ contract BloomPoolTest is Test {
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 amount);
+    event EmergencyWithdraw(address indexed owner);
 
     function setUp() public {
         stableToken = new MockERC20(6);
@@ -68,11 +70,11 @@ contract BloomPoolTest is Test {
             swapFacility: address(swap),
             treasury: treasury,
             leverageBps: 4 * BPS,
-            emergencyHandler: address(0),
+            emergencyHandler: emergencyHandler,
             minBorrowDeposit: 100.0e18,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             preHoldSwapTimeout: 7 days,
-            poolPhaseDuration: poolPhaseDuration = 30 days,
+            poolPhaseDuration: poolPhaseDuration = 180 days,
             lenderReturnBpsFeed: address(feed),
             lenderReturnFee: 1000,
             borrowerReturnFee: 3000,
@@ -214,9 +216,12 @@ contract BloomPoolTest is Test {
         pool.processBorrowerCommit(id);
     }
 
-    function test_fuzzingPartialMatch(address borrower, address lender, uint256 borrowerAmount, uint256 lenderAmount)
-        public
-    {
+    function test_fuzzingPartialMatch(
+        address borrower,
+        address lender,
+        uint256 borrowerAmount,
+        uint256 lenderAmount
+    ) public {
         borrowerAmount = bound(borrowerAmount, pool.MIN_BORROW_DEPOSIT(), type(uint128).max);
         lenderAmount = bound(lenderAmount, pool.MIN_BORROW_DEPOSIT(), type(uint128).max);
         // Require lender and borrower amount to not perfectly cover each other.
@@ -353,7 +358,7 @@ contract BloomPoolTest is Test {
             assertEq(lenderShares, lenderAmount);
             totalAmount = billsReceived * billPrice / 1e18;
             uint256 totalMatchAmount = pool.totalMatchAmount();
-            uint256 lenderYield = totalMatchAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() * 30 / 360 / BPS;
+            uint256 lenderYield = totalMatchAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() * poolPhaseDuration / 360 days / BPS;
             lenderReceived = totalMatchAmount + lenderYield;
             borrowerReceived = totalAmount - lenderReceived;
             uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
@@ -384,7 +389,7 @@ contract BloomPoolTest is Test {
         pool.withdrawLender(lenderAmount - lenderAmount / 2);
         assertEq(stableToken.balanceOf(user), lenderReceived);
         assertEq(pool.balanceOf(user), 0);
-
+        
         uint256 borrowId = 0;
         vm.expectEmit(true, true, true, true);
         emit BorrowerWithdraw(user, borrowId, borrowerReceived);
@@ -420,6 +425,50 @@ contract BloomPoolTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.ReadyPreHoldSwap)));
         pool.depositBorrower(amount2, new bytes32[](0));
         vm.stopPrank();
+    }
+
+    function testEmergencyWithdraw() public {
+        // Deposit Stables into pool
+        address user = makeWhitelistedAddr("user");
+        uint256 amount = 1000e18;
+        stableToken.mint(user, amount);
+        vm.startPrank(user);
+        stableToken.approve(address(pool), type(uint256).max);
+        whitelist.add(user);
+        pool.depositBorrower(amount / 2, new bytes32[](0));
+        pool.depositLender(amount / 2);
+        vm.stopPrank();
+        
+        vm.warp(pool.COMMIT_PHASE_END());
+        swap.setRate(1e18);
+        pool.initiatePreHoldSwap(new bytes32[](0));
+
+        // Fails to emergency withdraw before the pre-hold swap timeout
+        vm.startPrank(emergencyHandler);
+        vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPreHoldSwap)));
+        pool.emergencyWithdrawTo(emergencyHandler);
+        vm.stopPrank();
+
+        // Fast Forward to Emergency Exit Period
+        vm.warp(pool.POOL_PHASE_END());
+        assertEq(pool.state(), State.EmergencyExit);
+
+        // Fails to revert with none emergency handler account
+        vm.startPrank(user);
+        vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
+        pool.emergencyWithdrawTo(user);
+        vm.stopPrank();
+
+        uint256 billyBalance = billyToken.balanceOf(address(pool));
+
+        vm.startPrank(emergencyHandler);
+        vm.expectEmit(true, true, true, true);
+        emit EmergencyWithdraw(emergencyHandler);
+        pool.emergencyWithdrawTo(emergencyHandler);
+        vm.stopPrank();
+        
+        assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);
+        assertEq(billyToken.balanceOf(address(pool)), 0);
     }
 
     function assertEq(State a, State b) internal {
