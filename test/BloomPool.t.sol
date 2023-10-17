@@ -301,10 +301,10 @@ contract BloomPoolTest is Test {
         uint256 lenderAmount = borrowAmount * leverage / BPS;
     
         uint256 total = lenderAmount + borrowAmount;
-        uint256 lenderYield = lenderAmount * (BPS_FEED_VALUE - 1e4) * 180 days / 360 days / BPS;
+        uint256 lenderYield = lenderAmount * (BPS_FEED_VALUE - BPS) * poolPhaseDuration / 360 days / BPS;
         
         uint256 endValueLender = lenderAmount + lenderYield;
-        uint256 appreciatedTBillValue = total * 1.025e18 / 1e18;
+        uint256 appreciatedTBillValue = total * endingBillPrice / startingBillPrice;
         uint256 endValueBorrower = appreciatedTBillValue - endValueLender;
         // ###############################################
         
