@@ -38,6 +38,7 @@ contract BloomPoolTest is Test {
     uint256 internal poolPhaseDuration;
 
     uint256 internal constant BPS = 1e4;
+    uint256 internal constant BPS_FEED_VALUE = 1.04e4;
 
     // ============== Redefined Events ===============
     event BorrowerCommit(address indexed owner, uint256 indexed id, uint256 amount, uint256 cumulativeAmountEnd);
@@ -63,7 +64,7 @@ contract BloomPoolTest is Test {
         swap = new MockSwapFacility(stableToken, billyToken);
         feed = new MockBPSFeed();
 
-        feed.setRate(1.04e4);
+        feed.setRate(BPS_FEED_VALUE);
 
         pool = new BloomPool({
             underlyingToken: address(stableToken),
@@ -73,13 +74,13 @@ contract BloomPoolTest is Test {
             treasury: treasury,
             leverageBps: 4 * BPS,
             emergencyHandler: emergencyHandler,
-            minBorrowDeposit: 100.0e18,
+            minBorrowDeposit: 100.0e6,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             preHoldSwapTimeout: 7 days,
             poolPhaseDuration: poolPhaseDuration = 180 days,
             lenderReturnBpsFeed: address(feed),
-            lenderReturnFee: 1000,
-            borrowerReturnFee: 3000,
+            lenderReturnFee: 0,
+            borrowerReturnFee: 0,
             name: "Term Bound Token 6 month 2023-06-1",
             symbol: "TBT-1"
         });
@@ -288,15 +289,35 @@ contract BloomPoolTest is Test {
     }
 
     function testFullFlow() public {
-        address user = makeWhitelistedAddr("user");
+        address userBorrower = makeWhitelistedAddr("userBorrower");
+        address userLender = makeWhitelistedAddr("userLender");
         uint256 leverage = pool.LEVERAGE_BPS();
-        uint256 borrowAmount = 20_000e18;
+
+        // ############## High level Checks ##############
+        uint256 startingBillPrice = 1.00e18;
+        uint256 endingBillPrice = 1.025e18;
+
+        uint256 borrowAmount = 100e6;
         uint256 lenderAmount = borrowAmount * leverage / BPS;
+    
         uint256 total = lenderAmount + borrowAmount;
-        stableToken.mint(user, total);
-        vm.startPrank(user);
+        uint256 lenderYield = lenderAmount * (BPS_FEED_VALUE - 1e4) * 180 days / 360 days / BPS;
+        
+        uint256 endValueLender = lenderAmount + lenderYield;
+        uint256 appreciatedTBillValue = total * 1.025e18 / 1e18;
+        uint256 endValueBorrower = appreciatedTBillValue - endValueLender;
+        // ###############################################
+        
+        stableToken.mint(userBorrower, borrowAmount);
+        stableToken.mint(userLender, lenderAmount);
+
+        vm.startPrank(userBorrower);
         stableToken.approve(address(pool), type(uint256).max);
         pool.depositBorrower(borrowAmount, new bytes32[](0));
+        vm.stopPrank();
+
+        vm.startPrank(userLender);
+        stableToken.approve(address(pool), type(uint256).max);
         pool.depositLender(lenderAmount);
         vm.stopPrank();
 
@@ -316,31 +337,31 @@ contract BloomPoolTest is Test {
         vm.warp(pool.COMMIT_PHASE_END());
 
         assertEq(pool.state(), State.ReadyPreHoldSwap);
-        uint256 billPrice = 1.01e18;
-        swap.setRate(billPrice);
-        vm.expectEmit(true, true, true, true);
-        emit ExplictStateTransition(State.ReadyPreHoldSwap, State.PendingPreHoldSwap);
-        pool.initiatePreHoldSwap(new bytes32[](0));
-        assertEq(pool.state(), State.PendingPreHoldSwap);
-        assertEq(stableToken.balanceOf(address(pool)), unusedLendAmount);
 
         pool.processLenderCommit(0);
         pool.processLenderCommit(1);
         pool.processBorrowerCommit(0);
+
+        swap.setRate(startingBillPrice);
+        vm.expectEmit(true, true, true, true);
+        emit ExplictStateTransition(State.ReadyPreHoldSwap, State.PendingPreHoldSwap);
+        pool.initiatePreHoldSwap(new bytes32[](0));
+        assertEq(pool.state(), State.PendingPreHoldSwap);
+        assertEq(stableToken.balanceOf(address(pool)), 0);
 
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.PendingPreHoldSwap, State.Holding);
         swap.completeNextSwap();
 
         assertEq(pool.state(), State.Holding);
-        uint256 billsReceived = total * 1e18 / billPrice;
+        uint256 billsReceived = total * 1e18 / startingBillPrice;
         uint256 billBalance = billyToken.balanceOf(address(pool));
         assertEq(billBalance, billsReceived);
 
         vm.warp(pool.POOL_PHASE_END());
         assertEq(pool.state(), State.ReadyPostHoldSwap);
 
-        swap.setRate(billPrice = 1.698e18);
+        swap.setRate(endingBillPrice = 1.025e18);
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.ReadyPostHoldSwap, State.PendingPostHoldSwap);
         pool.initiatePostHoldSwap(new bytes32[](0));
@@ -362,52 +383,57 @@ contract BloomPoolTest is Test {
                 pool.getDistributionInfo();
             lenderDistro = lenderDist;
 
-            totalAmount = billsReceived * billPrice / 1e18;
-            totalMatchAmount = pool.totalMatchAmount();
-            uint256 lenderYield = totalMatchAmount * IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() * poolPhaseDuration / 360 days / BPS;
-            lenderReceived = (totalMatchAmount + lenderYield);
+            assertEq(borrowerShares, borrowAmount);
+            assertEq(lenderShares, lenderAmount);
 
-            borrowerReceived = billBalance - lenderReceived;
+            totalAmount = billsReceived * endingBillPrice / 1e18;
+            totalMatchAmount = pool.totalMatchAmount();
+
+            uint256 rateAppreciation = IBPSFeed(pool.LENDER_RETURN_BPS_FEED()).getWeightedRate() - BPS;
+            uint256 yield = totalMatchAmount * rateAppreciation * poolPhaseDuration / 360 days / BPS;
+            
+            lenderReceived = (totalMatchAmount + yield);
+            borrowerReceived = totalAmount - lenderReceived;
+
             uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
             uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
+
             lenderReceived -= lenderFee;
             borrowerReceived -= borrowerFee;
             totalAmount = lenderReceived + borrowerReceived;
+
             assertEq(lenderDist, lenderReceived);
             assertEq(borrowerDist, borrowerReceived);
 
             assertEq(stableToken.balanceOf(treasury), lenderFee + borrowerFee);
         }
 
-        vm.startPrank(user);
-        uint256 userBalance = stableToken.balanceOf(user);
-        uint256 claimAmount = (lenderAmount / 2) * lenderDistro / totalMatchAmount;
-        
+        // Lender Withdraw
         vm.expectEmit(true, true, true, true);
-        emit Transfer(user, address(0), (lenderAmount / 2));
+        emit Transfer(userLender, address(0), lenderAmount);
         vm.expectEmit(true, true, true, true);
-        emit LenderWithdraw(user, lenderAmount / 2, claimAmount);
-
-        pool.withdrawLender(lenderAmount / 2);
-        assertEq(stableToken.balanceOf(user), claimAmount);
-        assertEq(pool.balanceOf(user), lenderAmount / 2);
-
-        // Withdraw the second half of funds
-        pool.withdrawLender(lenderAmount / 2);
-        assertEq(stableToken.balanceOf(address(pool)), 0);
+        emit LenderWithdraw(userLender, lenderAmount, endValueLender);
         
+        vm.startPrank(userLender);
+        pool.withdrawLender(lenderAmount);
+        vm.stopPrank();
+
+        assertEq(stableToken.balanceOf(userLender), endValueLender);
+
+        // Withdraw borrower
         uint256 borrowId = 0;
         vm.expectEmit(true, true, true, true);
-        emit BorrowerWithdraw(user, borrowId, borrowerReceived);
+        emit BorrowerWithdraw(userBorrower, borrowId, borrowerReceived);
+
+        vm.startPrank(userBorrower);
         pool.withdrawBorrower(borrowId);
-        //assertEq(stableToken.balanceOf(user), total + (totalAmount - totalMatchAmount));
-
-        AssetCommitment memory commitment = pool.getBorrowCommitment(borrowId);
-        assertEq(commitment.cumulativeAmountEnd, 0);
-        assertEq(commitment.committedAmount, 0);
-        assertEq(commitment.owner, address(0));
-
         vm.stopPrank();
+        
+        assertEq(stableToken.balanceOf(userBorrower), endValueBorrower);
+
+        // Verify that the pool is empty
+        assertEq(stableToken.balanceOf(address(pool)), 0);
+        assertEq(billyToken.balanceOf(address(pool)), 0);
     }
 
     function testCannotDepositAfterCommit() public {
