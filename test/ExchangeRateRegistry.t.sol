@@ -72,7 +72,7 @@ contract ExchangeRateRegistryTest is Test {
             emergencyHandler: address(0),
             minBorrowDeposit: 100e18,
             commitPhaseDuration: COMMIT_PHASE,
-            preHoldSwapTimeout: 7 days,
+            swapTimeout: 7 days,
             poolPhaseDuration: POOL_DURATION,
             lenderReturnBpsFeed: address(feed),
             lenderReturnFee: LENDER_RETURN_FEE,

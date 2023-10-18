@@ -24,7 +24,7 @@ The constructor of the contract allows for easy deployment of new Billy pools.
   every $1 a borrower commits it'll match $35 of lender commitments 
 - `uint256 minBorrowerDeposit`: The minimum amount of tokens a borrower can Deposit to open up an order to be matched. 
 - `uint256 commitPhaseDuration`: How much time users should have to commit as borrowers/lenders from contract deployment.
-- `uint256 preHoldSwapTimeout`: How much time before the pool enters into emergency mode
+- `uint256 swapTimeout`: How much time before the pool enters into emergency mode
 - `uint256 poolPhaseDuration`: How long the pool should hold the treasuries before swapping back and
   allowing people to withdraw, **highly recommended** to set this to the maturity length of the
   underlying treasuries as the pool has no liquidation mechanism.

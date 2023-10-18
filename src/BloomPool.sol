@@ -45,6 +45,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     uint256 public immutable MIN_BORROW_DEPOSIT;
     uint256 public immutable COMMIT_PHASE_END;
     uint256 public immutable PRE_HOLD_SWAP_TIMEOUT_END;
+    uint256 public immutable POST_HOLD_SWAP_TIMEOUT_END;
     uint256 public immutable POOL_PHASE_END;
     uint256 public immutable POOL_PHASE_DURATION;
     uint256 public immutable LENDER_RETURN_FEE;
@@ -85,7 +86,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         uint256 leverageBps,
         uint256 minBorrowDeposit,
         uint256 commitPhaseDuration,
-        uint256 preHoldSwapTimeout,
+        uint256 swapTimeout,
         uint256 poolPhaseDuration,
         uint256 lenderReturnFee,
         uint256 borrowerReturnFee,
@@ -102,9 +103,10 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         LEVERAGE_BPS = leverageBps;
         MIN_BORROW_DEPOSIT = minBorrowDeposit;
         COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
-        PRE_HOLD_SWAP_TIMEOUT_END = block.timestamp + commitPhaseDuration + preHoldSwapTimeout;
+        PRE_HOLD_SWAP_TIMEOUT_END = block.timestamp + commitPhaseDuration + swapTimeout;
         POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;
         POOL_PHASE_DURATION = poolPhaseDuration;
+        POST_HOLD_SWAP_TIMEOUT_END = block.timestamp + commitPhaseDuration + poolPhaseDuration + (swapTimeout * 2 );
         LENDER_RETURN_FEE = lenderReturnFee;
         BORROWER_RETURN_FEE = borrowerReturnFee;
     }
@@ -304,6 +306,9 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         }
         if (lastState == State.Holding && block.timestamp >= POOL_PHASE_END) {
             return State.ReadyPostHoldSwap;
+        }
+        if (lastState == State.PendingPostHoldSwap && block.timestamp >= POST_HOLD_SWAP_TIMEOUT_END) {
+            return State.EmergencyExit;
         }
         return lastState;
     }

@@ -58,7 +58,7 @@ contract Deploy is Test, Script {
     uint256 internal constant BPS = 1e4;
     uint256 internal constant commitPhaseDuration = 10 days;
     uint256 internal constant poolPhaseDuration = 2 days;
-    uint256 internal constant preHoldSwapTimeout = 1 days;
+    uint256 internal constant swapTimeout = 1 days;
     // True if we want to deploy a factory. False if we want to use an existing one
     bool internal constant DEPLOY_FACTORY = true;
     bool internal constant DEPLOY_EXCHANGE_RATE_REGISTRY = true;
@@ -94,7 +94,7 @@ contract Deploy is Test, Script {
             50e4,
             10.0e6,
             commitPhaseDuration,
-            preHoldSwapTimeout,
+            swapTimeout,
             poolPhaseDuration,
             300, // 3%
             0 // 0%
@@ -192,7 +192,7 @@ contract Deploy is Test, Script {
     //         50e4,
     //         10.0e6,
     //         commitPhaseDuration,
-    //         preHoldSwapTimeout,
+    //         swapTimeout,
     //         poolPhaseDuration,
     //         300, // 3%
     //         0, // 0%

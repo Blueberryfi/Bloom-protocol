@@ -112,6 +112,7 @@ interface IBloomPool {
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
     function COMMIT_PHASE_END() external view returns (uint256);
     function PRE_HOLD_SWAP_TIMEOUT_END() external view returns (uint256);
+    function POST_HOLD_SWAP_TIMEOUT_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
     function POOL_PHASE_DURATION() external view returns (uint256);
     function LENDER_RETURN_FEE() external view returns (uint256);
