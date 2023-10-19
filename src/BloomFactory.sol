@@ -77,7 +77,7 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
             poolParams.leverageBps,
             poolParams.minBorrowDeposit,
             poolParams.commitPhaseDuration,
-            poolParams.preHoldSwapTimeout,
+            poolParams.swapTimeout,
             poolParams.poolPhaseDuration,
             poolParams.lenderReturnFee,
             poolParams.borrowerReturnFee,

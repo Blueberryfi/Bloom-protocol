@@ -76,7 +76,7 @@ contract BloomPoolTest is Test {
             emergencyHandler: emergencyHandler,
             minBorrowDeposit: 100.0e6,
             commitPhaseDuration: commitPhaseDuration = 3 days,
-            preHoldSwapTimeout: 7 days,
+            swapTimeout: 7 days,
             poolPhaseDuration: poolPhaseDuration = 180 days,
             lenderReturnBpsFeed: address(feed),
             lenderReturnFee: 0,
@@ -459,7 +459,7 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
     }
 
-    function testEmergencyWithdraw() public {
+    function testEmergencyWithdrawPreHold() public {
         // Deposit Stables into pool
         address user = makeWhitelistedAddr("user");
         uint256 amount = 1000e18;
@@ -493,6 +493,66 @@ contract BloomPoolTest is Test {
 
         uint256 billyBalance = billyToken.balanceOf(address(pool));
 
+        vm.startPrank(emergencyHandler);
+        vm.expectEmit(true, true, true, true);
+        emit EmergencyWithdraw(emergencyHandler);
+        pool.emergencyWithdrawTo(emergencyHandler);
+        vm.stopPrank();
+        
+        assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);
+        assertEq(billyToken.balanceOf(address(pool)), 0);
+    }
+
+    function testEmergencyWithdrawPostHold() public {
+        // Deposit Stables into pool
+        address user = makeWhitelistedAddr("user");
+        uint256 amount = 1000e18;
+        stableToken.mint(user, amount);
+        vm.startPrank(user);
+        stableToken.approve(address(pool), type(uint256).max);
+        whitelist.add(user);
+        pool.depositBorrower(amount / 2, new bytes32[](0));
+        pool.depositLender(amount / 2);
+        vm.stopPrank();
+        
+        vm.warp(pool.COMMIT_PHASE_END());
+        swap.setRate(1e18);
+        pool.initiatePreHoldSwap(new bytes32[](0));
+        assertEq(pool.state(), State.PendingPreHoldSwap);
+
+        vm.expectEmit(true, true, true, true);
+        emit ExplictStateTransition(State.PendingPreHoldSwap, State.Holding);
+        swap.completeNextSwap();
+
+        assertEq(pool.state(), State.Holding);
+        vm.warp(pool.POOL_PHASE_END());
+        assertEq(pool.state(), State.ReadyPostHoldSwap);
+
+        vm.expectEmit(true, true, true, true);
+        emit ExplictStateTransition(State.ReadyPostHoldSwap, State.PendingPostHoldSwap);
+        pool.initiatePostHoldSwap(new bytes32[](0));
+        assertEq(pool.state(), State.PendingPostHoldSwap);
+
+        vm.warp(pool.POOL_PHASE_END());
+
+        // Fails to emergency withdraw before the post-hold swap timeout
+        vm.startPrank(emergencyHandler);
+        vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPostHoldSwap)));
+        pool.emergencyWithdrawTo(emergencyHandler);
+        vm.stopPrank();
+
+        // Fast Forward to Emergency Exit Period
+        vm.warp(pool.POST_HOLD_SWAP_TIMEOUT_END());
+        assertEq(pool.state(), State.EmergencyExit);
+
+        // Fails to revert with none emergency handler account
+        vm.startPrank(user);
+        vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
+        pool.emergencyWithdrawTo(user);
+        vm.stopPrank();
+
+        uint256 billyBalance = billyToken.balanceOf(address(pool));
+                
         vm.startPrank(emergencyHandler);
         vm.expectEmit(true, true, true, true);
         emit EmergencyWithdraw(emergencyHandler);

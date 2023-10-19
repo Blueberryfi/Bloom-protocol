@@ -26,7 +26,7 @@ interface IBloomFactory {
         uint256 leverageBps;
         uint256 minBorrowDeposit;
         uint256 commitPhaseDuration;
-        uint256 preHoldSwapTimeout;
+        uint256 swapTimeout;
         uint256 poolPhaseDuration;
         uint256 lenderReturnFee;
         uint256 borrowerReturnFee;

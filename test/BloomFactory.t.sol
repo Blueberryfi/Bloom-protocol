@@ -54,7 +54,7 @@ contract BloomFactoryTest is Test {
             leverageBps: 0,
             minBorrowDeposit: 100e18,
             commitPhaseDuration: 3 days,
-            preHoldSwapTimeout: 7 days,
+            swapTimeout: 7 days,
             poolPhaseDuration: 180 days,
             lenderReturnFee: 1000,
             borrowerReturnFee: 300
