@@ -15,6 +15,7 @@ import {IOracle} from "./IOracle.sol";
 
 interface IEmergencyHandler {
 
+    error BorrowerAlreadyClaimed();
     error CallerNotBloomPool();
     error NoTokensToRedeem();
     error OracleAnswerNegative();
@@ -23,7 +24,7 @@ interface IEmergencyHandler {
 
     struct RedemptionInfo {
         address token;
-        uint256 rate; 
+        uint256 rate;
     }
 
     /**
