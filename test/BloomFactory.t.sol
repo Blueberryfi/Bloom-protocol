@@ -77,7 +77,7 @@ contract BloomFactoryTest is Test {
     function testCreatePool() public {
         BloomPool pool = _newPoolInstance();
 
-        assertNotEq(address(pool), address(0));
+        assertFalse(address(pool) == address(0));
         assertEq(factory.getLastCreatedPool(), address(pool));
         assertEq(factory.isPoolFromFactory(address(pool)), true);
     }
