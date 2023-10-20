@@ -12,6 +12,7 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IBloomPool, State} from "./interfaces/IBloomPool.sol";
+import {IEmergencyHandler} from "./interfaces/IEmergencyHandler.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -72,6 +73,11 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     modifier onlyAfterState(State lastInvalidState) {
         State currentState = state();
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
+        _;
+    }
+
+    modifier onlyEmergencyHandler() {
+        if (msg.sender != EMERGENCY_HANDLER) revert NotEmergencyHandler();
         _;
     }
 
@@ -277,11 +283,33 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     // ========= Emergency Withdraw Methods ==========
 
-    function emergencyWithdrawTo(address to) external onlyState(State.EmergencyExit) {
-        if (msg.sender != EMERGENCY_HANDLER) revert NotEmergencyHandler();
-        emit EmergencyWithdraw(to);
-        UNDERLYING_TOKEN.safeTransferAll(to);
-        BILL_TOKEN.safeTransferAll(to);
+    function emergencyWithdraw() external onlyState(State.EmergencyExit) onlyOwner() {
+        emit EmergencyWithdraw(EMERGENCY_HANDLER);
+        uint256 underlyingBalance = UNDERLYING_TOKEN.balanceOf(address(this));
+        uint256 billBalance = BILL_TOKEN.balanceOf(address(this));
+
+        if (underlyingBalance > 0) {
+            UNDERLYING_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
+            IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
+                ISwapFacility(swapFacility).underlyingTokenOracle(),
+                UNDERLYING_TOKEN
+            );
+        }
+        if (billBalance > 0) {
+            BILL_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
+            IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
+                ISwapFacility(swapFacility).billyTokenOracle(),
+                BILL_TOKEN
+            );
+        }
+    }
+
+    function executeEmergencyBurn(
+        address from,
+        uint256 amount
+    ) external onlyState(State.EmergencyExit) onlyEmergencyHandler {
+        emit EmergencyBurn(from, amount);
+        _burn(from, amount);
     }
 
     // ================ View Methods =================

@@ -54,9 +54,9 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         
         uint256 tokenAmount = pool.balanceOf(msg.sender);
         if (tokenAmount == 0) revert NoTokensToRedeem();
-        // TODO implement emergency burn function here
+        pool.executeEmergencyBurn(msg.sender, tokenAmount);
 
-        uint256 amount = tokenAmount * info.rate / 1e18;
+        uint256 amount = tokenAmount * info.rate / token.decimals();
         redeemToken.safeTransfer(msg.sender, amount);
 
         return amount;
@@ -74,9 +74,13 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(id);
         if (commitment.owner != msg.sender) revert InvalidOwner();
-        if (borrowerClaimStatus[address(pool)][id] == false) revert BorrowerAlreadyClaimed();
 
-        borrowerClaimStatus[address(pool)][id] = true;
+        if (borrowerClaimStatus[address(pool)][id] == false) {
+            revert BorrowerAlreadyClaimed();
+        } else {
+            borrowerClaimStatus[address(pool)][id] = true;
+        }
+
         uint256 amount = commitment.committedAmount * info.rate / ERC20(reedemToken).decimals();
         reedemToken.safeTransfer(msg.sender, amount);
         
