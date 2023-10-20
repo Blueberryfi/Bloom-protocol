@@ -478,7 +478,7 @@ contract BloomPoolTest is Test {
         // Fails to emergency withdraw before the pre-hold swap timeout
         vm.startPrank(emergencyHandler);
         vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPreHoldSwap)));
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
 
         // Fast Forward to Emergency Exit Period
@@ -488,7 +488,7 @@ contract BloomPoolTest is Test {
         // Fails to revert with none emergency handler account
         vm.startPrank(user);
         vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
-        pool.emergencyWithdrawTo(user);
+        pool.emergencyWithdraw();
         vm.stopPrank();
 
         uint256 billyBalance = billyToken.balanceOf(address(pool));
@@ -496,7 +496,7 @@ contract BloomPoolTest is Test {
         vm.startPrank(emergencyHandler);
         vm.expectEmit(true, true, true, true);
         emit EmergencyWithdraw(emergencyHandler);
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
         
         assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);
@@ -538,7 +538,7 @@ contract BloomPoolTest is Test {
         // Fails to emergency withdraw before the post-hold swap timeout
         vm.startPrank(emergencyHandler);
         vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPostHoldSwap)));
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
 
         // Fast Forward to Emergency Exit Period
@@ -548,7 +548,7 @@ contract BloomPoolTest is Test {
         // Fails to revert with none emergency handler account
         vm.startPrank(user);
         vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
-        pool.emergencyWithdrawTo(user);
+        pool.emergencyWithdraw();
         vm.stopPrank();
 
         uint256 billyBalance = billyToken.balanceOf(address(pool));
@@ -556,7 +556,7 @@ contract BloomPoolTest is Test {
         vm.startPrank(emergencyHandler);
         vm.expectEmit(true, true, true, true);
         emit EmergencyWithdraw(emergencyHandler);
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
         
         assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);

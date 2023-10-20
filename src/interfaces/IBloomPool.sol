@@ -88,8 +88,11 @@ interface IBloomPool {
 
     /**
      * @notice Burns TBY shares when users redeem from the EmergencyHandler
+     * @dev This is a permissioned function that can only be called by the EmergencyHandler contract
+     * @param from The account from which the TBY tokens will be burned from
+     * @param amount The amount of tokens to burn
      */
-    function executeEmergencyBurn() external;
+    function executeEmergencyBurn(address from, uint256 amount) external;
 
     /**
      * @notice Processes a borrower's commit, calculates the included and excluded amounts, and refunds any unmatched amounts.

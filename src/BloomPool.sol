@@ -23,6 +23,7 @@ import {CommitmentsLib, Commitments, AssetCommitment} from "./lib/CommitmentsLib
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     using CommitmentsLib for Commitments;
@@ -283,22 +284,25 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     // ========= Emergency Withdraw Methods ==========
 
-    function emergencyWithdraw() external onlyState(State.EmergencyExit) onlyOwner() {
+    function emergencyWithdraw() external onlyState(State.EmergencyExit) {
         emit EmergencyWithdraw(EMERGENCY_HANDLER);
         uint256 underlyingBalance = UNDERLYING_TOKEN.balanceOf(address(this));
         uint256 billBalance = BILL_TOKEN.balanceOf(address(this));
 
         if (underlyingBalance > 0) {
+            IOracle oracle = IOracle(ISwapFacility(SWAP_FACILITY).underlyingTokenOracle());
             UNDERLYING_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
             IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
-                ISwapFacility(swapFacility).underlyingTokenOracle(),
+                oracle,
                 UNDERLYING_TOKEN
             );
         }
+        
         if (billBalance > 0) {
+            IOracle oracle = IOracle(ISwapFacility(SWAP_FACILITY).billyTokenOracle());
             BILL_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
             IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
-                ISwapFacility(swapFacility).billyTokenOracle(),
+                oracle,
                 BILL_TOKEN
             );
         }
