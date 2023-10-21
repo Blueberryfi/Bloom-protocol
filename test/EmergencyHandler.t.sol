@@ -76,11 +76,27 @@ contract EmergencyHandlerTest is Test {
 
         _registerPool(stableToken, 100e6);
 
+        // Fails if lender tries to redeem from a non-registered pool
+        MockBloomPool pool2 = new MockBloomPool(address(stableToken), address(billyToken), address(swap));
         vm.startPrank(lender);
-        handler.redeem(IBloomPool(address(pool)));
+        vm.expectRevert(IEmergencyHandler.PoolNotRegistered.selector);
+        handler.redeem(IBloomPool(address(pool2)));
+        vm.stopPrank();
 
+        // Successfully redeem
+        vm.startPrank(lender);
+        uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)));
+        vm.stopPrank();
+
+        assertEq(amountRedeemed, 100e6);
         assertEq(stableToken.balanceOf(lender), 100e6);
         assertEq(ERC20(address(pool)).balanceOf(lender), 0);
+
+        // Lender tries to redeem again
+        vm.startPrank(lender);
+        vm.expectRevert(IEmergencyHandler.NoTokensToRedeem.selector);
+        handler.redeem(IBloomPool(address(pool)));
+        vm.stopPrank();
     }
 
     function test_redeemBorrower() public {
@@ -96,13 +112,27 @@ contract EmergencyHandlerTest is Test {
         });
 
         pool.setBorrowerCommitment(id, commitment);
-        
-        vm.startPrank(borrower);
+
+        // Fail if rando tries to redeem
+        vm.startPrank(makeAddr("rando"));
+        vm.expectRevert(IEmergencyHandler.InvalidOwner.selector);
         handler.redeem(IBloomPool(address(pool)), id);
         vm.stopPrank();
+        
+        // Successfully redeem
+        vm.startPrank(borrower);
+        uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)), id);
+        vm.stopPrank();
 
+        assertEq(amountRedeemed, 100e18);
         assertEq(billyToken.balanceOf(borrower), 100e18);
         assertEq(billyToken.balanceOf(address(handler)), 0);
+
+        // Fail if borrower tries to redeem again
+        vm.startPrank(borrower);
+        vm.expectRevert(IEmergencyHandler.BorrowerAlreadyClaimed.selector);
+        handler.redeem(IBloomPool(address(pool)), id);
+        vm.stopPrank();
     }
 
     function _registerPool(MockERC20 token, uint256 amount) internal {
