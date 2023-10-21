@@ -55,7 +55,7 @@ interface IBloomPool {
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
 
-    event EmergencyWithdraw(address indexed to);
+    event EmergencyWithdrawExecuted(address indexed from, address indexed to, uint256 amount);
     event EmergencyBurn(address indexed user, uint256 amount);
 
     /// @notice Initiates the pre-hold swap.

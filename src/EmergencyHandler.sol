@@ -40,8 +40,8 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         _;
     }
 
-    constructor(address _registry) Ownable2Step() {
-        REGISTRY = ExchangeRateRegistry(_registry);
+    constructor(ExchangeRateRegistry _registry) Ownable2Step() {
+        REGISTRY = _registry;
     }
 
     /**
@@ -91,6 +91,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
      * @inheritdoc IEmergencyHandler
      */
     // TODO: Maybe add more checks on rates and update times
+    // TODO: Add support for multiple registrations of a single pool
     function registerPool(IOracle _tokenOracle, address _asset) external override onlyPool {
         (, int256 answer,, uint256 updatedAt,) = _tokenOracle.latestRoundData();
         if (answer <= 0) revert OracleAnswerNegative();

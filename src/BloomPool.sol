@@ -285,7 +285,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     // ========= Emergency Withdraw Methods ==========
 
     function emergencyWithdraw() external onlyState(State.EmergencyExit) {
-        emit EmergencyWithdraw(EMERGENCY_HANDLER);
         uint256 underlyingBalance = UNDERLYING_TOKEN.balanceOf(address(this));
         uint256 billBalance = BILL_TOKEN.balanceOf(address(this));
 
@@ -296,6 +295,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
                 oracle,
                 UNDERLYING_TOKEN
             );
+            emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, underlyingBalance);
         }
         
         if (billBalance > 0) {
@@ -305,6 +305,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
                 oracle,
                 BILL_TOKEN
             );
+            emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, billBalance);
         }
     }
 

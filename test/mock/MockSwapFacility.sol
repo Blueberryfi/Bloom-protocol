@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {IMockSwapFacility} from "./interfaces/IMockSwapFacility.sol";
 
 import {MockERC20} from "./MockERC20.sol";
+import {MockOracle} from "./MockOracle.sol";
 import {ISwapRecipient} from "src/interfaces/ISwapRecipient.sol";
 
 contract MockSwapFacility is IMockSwapFacility {
@@ -22,6 +23,8 @@ contract MockSwapFacility is IMockSwapFacility {
 
     MockERC20 public immutable token0;
     MockERC20 public immutable token1;
+    address public immutable underlyingTokenOracle;
+    address public immutable billyTokenOracle;
 
     uint256 public exchangeRate;
 
@@ -33,9 +36,16 @@ contract MockSwapFacility is IMockSwapFacility {
 
     PendingSwap[] public pendingSwaps;
 
-    constructor(MockERC20 token0_, MockERC20 token1_) {
+    constructor(
+        MockERC20 token0_,
+        MockERC20 token1_,
+        MockOracle oracle1_,
+        MockOracle oracle2_
+    ) {
         token0 = token0_;
         token1 = token1_;
+        underlyingTokenOracle = address(oracle1_);
+        billyTokenOracle = address(oracle2_);
     }
 
     function setRate(uint256 newRate) external {
