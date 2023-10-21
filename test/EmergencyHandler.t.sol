@@ -17,9 +17,9 @@ import {MockBloomPool} from "./mock/MockBloomPool.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
 
+import {AssetCommitment} from "src/lib/CommitmentsLib.sol";
 import {EmergencyHandler, IEmergencyHandler} from "src/EmergencyHandler.sol";
 import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
-import {AssetCommitment} from "src/lib/CommitmentsLib.sol";
 
 import {IBloomPool} from "src/interfaces/IBloomPool.sol";
 

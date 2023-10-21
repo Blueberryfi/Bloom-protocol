@@ -14,14 +14,16 @@ import {Test} from "forge-std/Test.sol";
 
 import {BloomPool, State, AssetCommitment} from "src/BloomPool.sol";
 import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
-import {IBloomPool} from "src/interfaces/IBloomPool.sol";
-import {IWhitelist} from "src/interfaces/IWhitelist.sol";
-import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
+
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
+
+import {IBloomPool} from "src/interfaces/IBloomPool.sol";
+import {IWhitelist} from "src/interfaces/IWhitelist.sol";
+import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 
 contract ExchangeRateRegistryTest is Test {
     BloomPool internal pool;

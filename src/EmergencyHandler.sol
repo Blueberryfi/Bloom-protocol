@@ -10,14 +10,15 @@
 
 pragma solidity ^0.8.19;
 
-import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-import {IEmergencyHandler, IOracle} from "./interfaces/IEmergencyHandler.sol";
-import {ExchangeRateRegistry} from "./helpers/ExchangeRateRegistry.sol";
 import {AssetCommitment} from "./lib/CommitmentsLib.sol";
+import {ExchangeRateRegistry} from "./helpers/ExchangeRateRegistry.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
 import {IBloomPool} from "./interfaces/IBloomPool.sol";
+import {IEmergencyHandler, IOracle} from "./interfaces/IEmergencyHandler.sol";
 
 /**
  * @title EmergencyHandler
@@ -31,7 +32,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
     ExchangeRateRegistry public immutable REGISTRY;
     mapping(address => RedemptionInfo) public redemptionInfo;
     mapping(address => mapping(uint256 => bool)) public borrowerClaimStatus;
-    event log(string message, uint256 value);
+
     // ================== Modifiers ==================
 
     modifier onlyPool() {
@@ -58,9 +59,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
 
         // BloomPool decimals are the same as the underlying token, so we scale down by the oracle's decimals
         uint256 amount = tokenAmount * info.rate / 10**info.rateDecimals;
-        
         redeemToken.safeTransfer(msg.sender, amount);
-
         return amount;
     }
 
@@ -87,7 +86,6 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         uint256 redeemDecimals = ERC20(redeemToken).decimals();
         uint256 underlyingDecimals = ERC20(address(pool)).decimals();
 
-        // Check if this logic is needed or is overkill
         if (redeemDecimals == underlyingDecimals) {
             amount = commitment.committedAmount * info.rate / 10**info.rateDecimals;
         } else if (redeemDecimals > underlyingDecimals) {
@@ -99,7 +97,6 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         }
 
         redeemToken.safeTransfer(msg.sender, amount);
-        
         return amount;
     }
 
