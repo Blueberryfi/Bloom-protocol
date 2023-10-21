@@ -26,7 +26,7 @@ import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
-import {console2} from "forge-std/console2.sol";
+
 contract BloomPoolTest is Test {
     BloomPool internal pool;
 

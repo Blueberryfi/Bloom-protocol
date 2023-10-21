@@ -10,7 +10,7 @@
 
 pragma solidity ^0.8.0;
 
-import {BloomPool} from "../BloomPool.sol";
+import {IBloomPool} from "./IBloomPool.sol";
 import {IOracle} from "./IOracle.sol";
 
 interface IEmergencyHandler {
@@ -25,6 +25,7 @@ interface IEmergencyHandler {
     struct RedemptionInfo {
         address token;
         uint256 rate;
+        uint256 rateDecimals;
     }
 
     /**
@@ -32,7 +33,7 @@ interface IEmergencyHandler {
      * @param _pool BloomPool that the funds in the emergency handler contract orginated from
      * @return amount of underlying assets redeemed
      */
-    function redeem(BloomPool _pool) external returns (uint256);
+    function redeem(IBloomPool _pool) external returns (uint256);
 
     /**
      * @notice Redeem Bill Tokens 
@@ -40,7 +41,7 @@ interface IEmergencyHandler {
      * @param _id Id of the borrowers commit in the corresponding BloomPool
      * @return amount of Bill Tokens redeemed
      */
-    function redeem(BloomPool _pool, uint256 _id) external returns (uint256);
+    function redeem(IBloomPool _pool, uint256 _id) external returns (uint256);
     
     /**
      * @notice Registers a Bloom Pool in the Emergency Handler
