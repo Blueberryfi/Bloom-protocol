@@ -559,6 +559,7 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
 
         stableOracle.setAnswer(1e8);
+        billOracle.setAnswer(1e8);
 
         // Fast Forward to Emergency Exit Period
         vm.warp(pool.POST_HOLD_SWAP_TIMEOUT_END());
