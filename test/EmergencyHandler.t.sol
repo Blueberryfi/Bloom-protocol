@@ -25,6 +25,7 @@ import {IBloomPool} from "src/interfaces/IBloomPool.sol";
 
 contract EmergencyHandlerTest is Test {
     address internal multisig = makeAddr("multisig");
+    address internal rando = makeAddr("rando");
     MockERC20 internal stableToken;
     MockERC20 internal billyToken;
     MockBloomPool internal pool;
@@ -59,9 +60,36 @@ contract EmergencyHandlerTest is Test {
     function test_redemptionInfo() public {
         _registerPool(stableToken, 100e6);
 
-        (address token, uint256 rate, ) = handler.redemptionInfo(address(pool));
-        assertEq(token, address(stableToken));
-        assertEq(rate, 1e8);
+        (IEmergencyHandler.Token memory underlyingInfo, ) = handler.redemptionInfo(address(pool));
+        assertEq(underlyingInfo.token, address(stableToken));
+        assertEq(underlyingInfo.rate, 1e8);
+    }
+
+    function test_failedRegistrations() public {
+        // Fail if non BloomPool address tries to register a pool
+        vm.startPrank(rando);
+        vm.expectRevert(IEmergencyHandler.CallerNotBloomPool.selector);
+        handler.registerPool(
+            address(stableToken),
+            address(billyToken),
+            stableOracle,
+            billyOracle
+        );
+        vm.stopPrank();
+
+        // Register pool for next test
+        _registerPool(stableToken, 100e6);
+
+        // Fail if pool tries to register again
+        vm.expectRevert(IEmergencyHandler.PoolAlreadyRegistered.selector);
+        vm.startPrank(address(pool));
+        handler.registerPool(
+            address(stableToken),
+            address(billyToken),
+            stableOracle,
+            billyOracle
+        );
+        vm.stopPrank();
     }
 
     function test_borrowerClaimStatus() public {
@@ -114,7 +142,7 @@ contract EmergencyHandlerTest is Test {
         pool.setBorrowerCommitment(id, commitment);
 
         // Fail if rando tries to redeem
-        vm.startPrank(makeAddr("rando"));
+        vm.startPrank(rando);
         vm.expectRevert(IEmergencyHandler.InvalidOwner.selector);
         handler.redeem(IBloomPool(address(pool)), id);
         vm.stopPrank();
@@ -139,21 +167,23 @@ contract EmergencyHandlerTest is Test {
         pool.setState(MockBloomPool.State.EmergencyExit);
         pool.setEmergencyHandler(address(handler));
 
+        stableOracle.setAnswer(1e8);
+        billyOracle.setAnswer(1e8);
+
         if (token == stableToken) {
-            stableOracle.setAnswer(1e8);
             stableToken.mint(address(handler), amount);
-
-            vm.startPrank(address(pool));
-            handler.registerPool(stableOracle, address(stableToken));
-            vm.stopPrank();
         } else {
-            billyOracle.setAnswer(1e8);
             billyToken.mint(address(handler), amount);
-
-            vm.startPrank(address(pool));
-            handler.registerPool(billyOracle, address(billyToken));
-            vm.stopPrank();
         }        
+
+        vm.startPrank(address(pool));
+        handler.registerPool(
+            address(stableToken),
+            address(billyToken),
+            stableOracle,
+            billyOracle
+        );
+        vm.stopPrank();
     }
     
 }

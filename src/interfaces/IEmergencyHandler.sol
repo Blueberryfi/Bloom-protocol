@@ -20,12 +20,18 @@ interface IEmergencyHandler {
     error NoTokensToRedeem();
     error OracleAnswerNegative();
     error PoolNotRegistered();
+    error PoolAlreadyRegistered();
     error InvalidOwner();
 
-    struct RedemptionInfo {
+    struct Token {
         address token;
         uint256 rate;
         uint256 rateDecimals;
+    }
+
+    struct RedemptionInfo {
+        Token underlyingToken;
+        Token billToken;
     }
 
     /**
@@ -45,7 +51,15 @@ interface IEmergencyHandler {
     
     /**
      * @notice Registers a Bloom Pool in the Emergency Handler
-     * @param _asset Address of the asset being set to the EmergencyHandler
+     * @param underlyingToken Underlying token of the Bloom Pool
+     * @param billToken Bill token of the Bloom Pool
+     * @param underlyingOracle Oracle for the underlying token
+     * @param billOracle Oracle for the bill token
      */
-    function registerPool(IOracle _tokenOracle, address _asset) external;
+    function registerPool(
+        address underlyingToken,
+        address billToken,
+        IOracle underlyingOracle,
+        IOracle billOracle
+    ) external;
 }

@@ -288,25 +288,25 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         uint256 underlyingBalance = UNDERLYING_TOKEN.balanceOf(address(this));
         uint256 billBalance = BILL_TOKEN.balanceOf(address(this));
 
+        IOracle underlyingOracle = IOracle(ISwapFacility(SWAP_FACILITY).billyTokenOracle());
+        IOracle billOracle = IOracle(ISwapFacility(SWAP_FACILITY).underlyingTokenOracle());
+
         if (underlyingBalance > 0) {
-            IOracle oracle = IOracle(ISwapFacility(SWAP_FACILITY).underlyingTokenOracle());
             UNDERLYING_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
-            IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
-                oracle,
-                UNDERLYING_TOKEN
-            );
             emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, underlyingBalance);
         }
         
         if (billBalance > 0) {
-            IOracle oracle = IOracle(ISwapFacility(SWAP_FACILITY).billyTokenOracle());
             BILL_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
-            IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
-                oracle,
-                BILL_TOKEN
-            );
             emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, billBalance);
         }
+
+        IEmergencyHandler(EMERGENCY_HANDLER).registerPool(
+            UNDERLYING_TOKEN,
+            BILL_TOKEN,
+            underlyingOracle,
+            billOracle
+        );
     }
 
     function executeEmergencyBurn(

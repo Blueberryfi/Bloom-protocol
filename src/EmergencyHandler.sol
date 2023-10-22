@@ -49,17 +49,17 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
      * @inheritdoc IEmergencyHandler
      */
     function redeem(IBloomPool pool) external override returns (uint256) {
-        RedemptionInfo memory info = redemptionInfo[address(pool)];
-        address redeemToken = info.token;
-        if (redeemToken == address(0)) revert PoolNotRegistered();
+        Token memory underlyingInfo = redemptionInfo[address(pool)].underlyingToken;
+        address underlyingToken = underlyingInfo.token;
+        if (underlyingToken == address(0)) revert PoolNotRegistered();
         
         uint256 tokenAmount = ERC20(address(pool)).balanceOf(msg.sender);
         if (tokenAmount == 0) revert NoTokensToRedeem();
         pool.executeEmergencyBurn(msg.sender, tokenAmount);
 
         // BloomPool decimals are the same as the underlying token, so we scale down by the oracle's decimals
-        uint256 amount = tokenAmount * info.rate / 10**info.rateDecimals;
-        redeemToken.safeTransfer(msg.sender, amount);
+        uint256 amount = tokenAmount * underlyingInfo.rate / 10**underlyingInfo.rateDecimals;
+        underlyingToken.safeTransfer(msg.sender, amount);
         return amount;
     }
 
@@ -71,8 +71,10 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         uint256 id
     ) external override returns (uint256) {
         uint256 amount;
-        RedemptionInfo memory info = redemptionInfo[address(pool)];
-        address redeemToken = info.token;
+        Token memory billTokenInfo = redemptionInfo[address(pool)].billToken;
+        address billToken = billTokenInfo.token;
+        uint256 billDecimals = ERC20(billToken).decimals();
+        uint256 underlyingDecimals = ERC20(address(pool)).decimals();
 
         AssetCommitment memory commitment = pool.getBorrowCommitment(id);
         if (commitment.owner != msg.sender) revert InvalidOwner();
@@ -83,31 +85,38 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
             borrowerClaimStatus[address(pool)][id] = true;
         }
 
-        uint256 redeemDecimals = ERC20(redeemToken).decimals();
-        uint256 underlyingDecimals = ERC20(address(pool)).decimals();
-
-        if (redeemDecimals == underlyingDecimals) {
-            amount = commitment.committedAmount * info.rate / 10**info.rateDecimals;
-        } else if (redeemDecimals > underlyingDecimals) {
-            uint256 scalingFactor = 10 ** (redeemDecimals - underlyingDecimals);
-            amount = commitment.committedAmount * info.rate * scalingFactor / 10**info.rateDecimals;
+        if (billDecimals == underlyingDecimals) {
+            amount = commitment.committedAmount * billTokenInfo.rate / 10**billTokenInfo.rateDecimals;
+        } else if (billDecimals > underlyingDecimals) {
+            uint256 scalingFactor = 10 ** (billDecimals - underlyingDecimals);
+            amount = commitment.committedAmount * billTokenInfo.rate * scalingFactor / 10**billTokenInfo.rateDecimals;
         } else {
-            uint256 scalingFactor = 10 ** (underlyingDecimals - redeemDecimals);
-            amount = commitment.committedAmount * info.rate / 10**info.rateDecimals / scalingFactor;
+            uint256 scalingFactor = 10 ** (underlyingDecimals - billDecimals);
+            amount = commitment.committedAmount * billTokenInfo.rate / 10**billTokenInfo.rateDecimals / scalingFactor;
         }
 
-        redeemToken.safeTransfer(msg.sender, amount);
+        billToken.safeTransfer(msg.sender, amount);
         return amount;
     }
 
     /**
      * @inheritdoc IEmergencyHandler
      */
-    // TODO: Maybe add more checks on rates and update times
-    // TODO: Add support for multiple registrations of a single pool
-    function registerPool(IOracle _tokenOracle, address _asset) external override onlyPool {
-        (, int256 answer,, uint256 updatedAt,) = _tokenOracle.latestRoundData();
-        if (answer <= 0) revert OracleAnswerNegative();
-        redemptionInfo[msg.sender] = RedemptionInfo(_asset, uint256(answer), _tokenOracle.decimals());
+    function registerPool(
+        address underlyingToken,
+        address billToken,
+        IOracle underlyingOracle,
+        IOracle billOracle
+    ) external override onlyPool {
+        if (redemptionInfo[msg.sender].underlyingToken.token != address(0)) revert PoolAlreadyRegistered();
+        
+        (, int256 underlyingAnswer,,,) = underlyingOracle.latestRoundData();
+        (, int256 billAnswer,,,) = billOracle.latestRoundData();
+        if (underlyingAnswer <= 0 || billAnswer <= 0) revert OracleAnswerNegative();
+
+        redemptionInfo[msg.sender] = RedemptionInfo(
+            Token(underlyingToken, uint256(underlyingAnswer), underlyingOracle.decimals()),
+            Token(billToken, uint256(billAnswer), billOracle.decimals())
+        );
     }
 }
