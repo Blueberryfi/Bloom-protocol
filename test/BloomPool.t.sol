@@ -480,7 +480,7 @@ contract BloomPoolTest is Test {
     function testEmergencyWithdrawPreHold() public {
         // Deposit Stables into pool
         address user = makeWhitelistedAddr("user");
-        uint256 amount = 1000e18;
+        uint256 amount = 1000e6;
         stableToken.mint(user, amount);
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
@@ -490,8 +490,11 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
         
         vm.warp(pool.COMMIT_PHASE_END());
+        pool.processBorrowerCommit(0);
+        pool.processLenderCommit(0);
         swap.setRate(1e18);
         pool.initiatePreHoldSwap(new bytes32[](0));
+        stableToken.mint(address(pool), pool.totalMatchAmount());
 
         // Fails to emergency withdraw before the pre-hold swap timeout
         vm.startPrank(multisig);
@@ -504,11 +507,10 @@ contract BloomPoolTest is Test {
         billOracle.setAnswer(1e8);
 
         // Fast Forward to Emergency Exit Period
-        vm.warp(pool.POOL_PHASE_END());
+        vm.warp(pool.PRE_HOLD_SWAP_TIMEOUT_END());
         assertEq(pool.state(), State.EmergencyExit);
 
         uint256 stableBalance = stableToken.balanceOf(address(pool));
-        uint256 billyBalance = billyToken.balanceOf(address(pool));
 
         vm.startPrank(multisig);
         vm.expectEmit(true, true, true, true);
@@ -523,7 +525,7 @@ contract BloomPoolTest is Test {
     function testEmergencyWithdrawPostHold() public {
         // Deposit Stables into pool
         address user = makeWhitelistedAddr("user");
-        uint256 amount = 1000e18;
+        uint256 amount = 1000e6;
         stableToken.mint(user, amount);
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
@@ -534,6 +536,8 @@ contract BloomPoolTest is Test {
         
         vm.warp(pool.COMMIT_PHASE_END());
         swap.setRate(1e18);
+        pool.processBorrowerCommit(0);
+        pool.processLenderCommit(0);
         pool.initiatePreHoldSwap(new bytes32[](0));
         assertEq(pool.state(), State.PendingPreHoldSwap);
 
@@ -545,6 +549,7 @@ contract BloomPoolTest is Test {
         vm.warp(pool.POOL_PHASE_END());
         assertEq(pool.state(), State.ReadyPostHoldSwap);
 
+        swap.setRate(1.025e18);
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.ReadyPostHoldSwap, State.PendingPostHoldSwap);
         pool.initiatePostHoldSwap(new bytes32[](0));
@@ -559,13 +564,16 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
 
         stableOracle.setAnswer(1e8);
-        billOracle.setAnswer(1e8);
+        billOracle.setAnswer(102.5e8);
 
         // Fast Forward to Emergency Exit Period
         vm.warp(pool.POST_HOLD_SWAP_TIMEOUT_END());
+        stableToken.mint(address(pool), pool.totalMatchAmount() * 1e18 / 1.025e18);
+        billyToken.mint(address(pool), pool.totalMatchAmount() * 1e12 / 2);
         assertEq(pool.state(), State.EmergencyExit);
 
         uint256 stableBalance = stableToken.balanceOf(address(pool));
+        uint256 billyBalance = billyToken.balanceOf(address(pool));
                 
         vm.startPrank(multisig);
         vm.expectEmit(true, true, true, true);
@@ -574,6 +582,7 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
         
         assertEq(stableToken.balanceOf(address(emergencyHandler)), stableBalance);
+        assertEq(billyToken.balanceOf(address(emergencyHandler)), billyBalance);
         assertEq(stableToken.balanceOf(address(pool)), 0);
     }
 

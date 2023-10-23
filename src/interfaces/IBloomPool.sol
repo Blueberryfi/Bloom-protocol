@@ -35,7 +35,7 @@ interface IBloomPool {
     error NotWhitelisted();
     error NoCommitToProcess();
     error CommitTooSmall();
-
+    error OracleAnswerNegative();
     error CanOnlyWithdrawProcessedCommit(uint256 id);
     error NoCommitToWithdraw();
 

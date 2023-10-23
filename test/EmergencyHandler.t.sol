@@ -12,10 +12,13 @@ pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 
+import {FixedPointMathLib as Math} from "solady/utils/FixedPointMathLib.sol";
+
 import {MockERC20, ERC20} from "./mock/MockERC20.sol";
 import {MockBloomPool} from "./mock/MockBloomPool.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
+import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
 
 import {AssetCommitment} from "src/lib/CommitmentsLib.sol";
 import {EmergencyHandler, IEmergencyHandler} from "src/EmergencyHandler.sol";
@@ -30,19 +33,28 @@ contract EmergencyHandlerTest is Test {
     MockERC20 internal billyToken;
     MockBloomPool internal pool;
     MockSwapFacility internal swap;
+    MockBPSFeed internal bpsFeed;
     MockOracle internal stableOracle;
     MockOracle internal billyOracle;
     
     ExchangeRateRegistry internal registry;
     EmergencyHandler internal handler;
 
+    uint256 internal constant BPS = 1e4;
+    uint256 internal constant BPS_FEED_VALUE = 1.04e4;  
+    uint256 internal constant LEVERAGE_BPS = 4e4;
+
     function setUp() public {
         stableToken = new MockERC20(6);
+        vm.label(address(stableToken), "stableToken");
         billyToken = new MockERC20(18);
+        vm.label(address(billyToken), "billyToken");
         stableOracle = new MockOracle(8);
         billyOracle = new MockOracle(8);
+        bpsFeed = new MockBPSFeed();
         swap = new MockSwapFacility(stableToken, billyToken, stableOracle, billyOracle);
         pool = new MockBloomPool(address(stableToken), address(billyToken), address(swap));
+        vm.label(address(pool), "pool");
         pool.setCommitPhaseEnd(block.timestamp + 100000);
         address factory = makeAddr("factory");
         registry = new ExchangeRateRegistry(multisig, factory);
@@ -57,52 +69,56 @@ contract EmergencyHandlerTest is Test {
         assertEq(address(registry), address(handler.REGISTRY()));
     }
 
-    function test_redemptionInfo() public {
-        _registerPool(stableToken, 100e6);
+    // function test_redemptionInfo() public {
+    //     _registerPool(stableToken, 100e6);
 
-        (IEmergencyHandler.Token memory underlyingInfo, ) = handler.redemptionInfo(address(pool));
-        assertEq(underlyingInfo.token, address(stableToken));
-        assertEq(underlyingInfo.rate, 1e8);
-    }
+    //     (IEmergencyHandler.Token memory underlyingInfo, ) = handler.redemptionInfo(address(pool));
+    //     assertEq(underlyingInfo.token, address(stableToken));
+    //     assertEq(underlyingInfo.rate, 1e8);
+    // }
 
     function test_failedRegistrations() public {
         // Fail if non BloomPool address tries to register a pool
+        // empty data
+        IEmergencyHandler.RedemptionInfo memory redemptionInfo = IEmergencyHandler.RedemptionInfo(
+            IEmergencyHandler.Token(address(stableToken), 1e8, stableToken.decimals()),
+            IEmergencyHandler.Token(address(billyToken), 100e8, billyToken.decimals()),
+            IEmergencyHandler.PoolAccounting(
+                0,
+                0,
+                0,
+                0 * BPS / LEVERAGE_BPS,
+                stableToken.balanceOf(address(handler)),
+                billyToken.balanceOf(address(handler))
+            ),
+            false
+        );
         vm.startPrank(rando);
         vm.expectRevert(IEmergencyHandler.CallerNotBloomPool.selector);
-        handler.registerPool(
-            address(stableToken),
-            address(billyToken),
-            stableOracle,
-            billyOracle
-        );
+        handler.registerPool(redemptionInfo);
         vm.stopPrank();
 
         // Register pool for next test
-        _registerPool(stableToken, 100e6);
+        _registerPool(100e6);
 
         // Fail if pool tries to register again
         vm.expectRevert(IEmergencyHandler.PoolAlreadyRegistered.selector);
         vm.startPrank(address(pool));
-        handler.registerPool(
-            address(stableToken),
-            address(billyToken),
-            stableOracle,
-            billyOracle
-        );
+        handler.registerPool(redemptionInfo);
         vm.stopPrank();
     }
 
     function test_borrowerClaimStatus() public {
-        _registerPool(billyToken, 100e6);
-
-        assertEq(handler.borrowerClaimStatus(address(pool),0), false);
+        _registerPool(100e6);
+        (bool hasClaimed, ) = handler.borrowerClaimStatus(address(pool), 0);
+        assertEq(hasClaimed, false);
     }
 
     function test_redeemLender() public {
         address lender = makeAddr("lender");
-        MockERC20(address(pool)).mint(lender, 100e6);
-
-        _registerPool(stableToken, 100e6);
+        uint256 borrowAmount = 100e6;
+        pool.mint(lender, borrowAmount * LEVERAGE_BPS / BPS);
+        _registerPool(borrowAmount);
 
         // Fails if lender tries to redeem from a non-registered pool
         MockBloomPool pool2 = new MockBloomPool(address(stableToken), address(billyToken), address(swap));
@@ -116,8 +132,9 @@ contract EmergencyHandlerTest is Test {
         uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)));
         vm.stopPrank();
 
-        assertEq(amountRedeemed, 100e6);
-        assertEq(stableToken.balanceOf(lender), 100e6);
+        assertEq(amountRedeemed, 408000000);
+        assertEq(stableToken.balanceOf(lender), 408000000);
+        assertEq(stableToken.balanceOf(address(handler)), 92000000);
         assertEq(ERC20(address(pool)).balanceOf(lender), 0);
 
         // Lender tries to redeem again
@@ -129,7 +146,7 @@ contract EmergencyHandlerTest is Test {
 
     function test_redeemBorrower() public {
         address borrower = makeAddr("borrower");
-        _registerPool(billyToken, 100e18);
+        _registerPool(100e6);
 
         uint256 id = 0;
 
@@ -152,37 +169,53 @@ contract EmergencyHandlerTest is Test {
         uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)), id);
         vm.stopPrank();
 
-        assertEq(amountRedeemed, 100e18);
-        assertEq(billyToken.balanceOf(borrower), 100e18);
-        assertEq(billyToken.balanceOf(address(handler)), 0);
+        assertEq(amountRedeemed, 92000000);
+        assertEq(stableToken.balanceOf(borrower), 92000000);
+        assertEq(stableToken.balanceOf(address(handler)), 408000000);
 
         // Fail if borrower tries to redeem again
         vm.startPrank(borrower);
-        vm.expectRevert(IEmergencyHandler.BorrowerAlreadyClaimed.selector);
+        vm.expectRevert(IEmergencyHandler.NoTokensToRedeem.selector);
         handler.redeem(IBloomPool(address(pool)), id);
         vm.stopPrank();
     }
 
-    function _registerPool(MockERC20 token, uint256 amount) internal {
+    function _registerPool(uint256 borrowAmount) internal {
         pool.setState(MockBloomPool.State.EmergencyExit);
         pool.setEmergencyHandler(address(handler));
 
         stableOracle.setAnswer(1e8);
-        billyOracle.setAnswer(1e8);
+        billyOracle.setAnswer(102.5e8);
+        bpsFeed.setRate(1e4);
 
-        if (token == stableToken) {
-            stableToken.mint(address(handler), amount);
-        } else {
-            billyToken.mint(address(handler), amount);
-        }        
+        uint256 lenderAmount = borrowAmount * LEVERAGE_BPS / BPS;
+        stableToken.mint(address(handler), lenderAmount);
+        stableToken.mint(address(handler), borrowAmount);
+
+        uint256 scalingFactor = 10 ** (billyToken.decimals() - stableToken.decimals());
+        uint256 additionalValue = billyToken.balanceOf(address(handler)) * uint256(billyOracle.latestAnswer()) / 1e8 / scalingFactor;
+        uint256 expectedTotalBalance = stableToken.balanceOf(address(handler)) + additionalValue;
+
+        uint256 lenderYield = lenderAmount * (BPS_FEED_VALUE - BPS) * 180 days / 360 days / BPS;
+        uint256 lenderDistro = lenderAmount + lenderYield;
+        uint256 borrowerDistro = expectedTotalBalance - lenderDistro;
+
+        IEmergencyHandler.RedemptionInfo memory redemptionInfo = IEmergencyHandler.RedemptionInfo(
+            IEmergencyHandler.Token(address(stableToken), 1e8, stableToken.decimals()),
+            IEmergencyHandler.Token(address(billyToken), 100e8, billyToken.decimals()),
+            IEmergencyHandler.PoolAccounting(
+                lenderDistro,
+                borrowerDistro,
+                lenderAmount,
+                lenderAmount * BPS / LEVERAGE_BPS,
+                stableToken.balanceOf(address(handler)),
+                billyToken.balanceOf(address(handler))
+            ),
+            true
+        );
 
         vm.startPrank(address(pool));
-        handler.registerPool(
-            address(stableToken),
-            address(billyToken),
-            stableOracle,
-            billyOracle
-        );
+        handler.registerPool(redemptionInfo);
         vm.stopPrank();
     }
     

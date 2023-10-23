@@ -19,6 +19,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {IBloomPool} from "./interfaces/IBloomPool.sol";
 import {IEmergencyHandler, IOracle} from "./interfaces/IEmergencyHandler.sol";
+import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 
 /**
  * @title EmergencyHandler
@@ -31,13 +32,20 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
 
     ExchangeRateRegistry public immutable REGISTRY;
     mapping(address => RedemptionInfo) public redemptionInfo;
-    mapping(address => mapping(uint256 => bool)) public borrowerClaimStatus;
+    mapping(address => mapping(uint256 => ClaimStatus)) public borrowerClaimStatus;
 
     // ================== Modifiers ==================
 
     modifier onlyPool() {
         (bool registered, , ) = REGISTRY.tokenInfos(msg.sender);
         if (!registered) revert CallerNotBloomPool();
+        _;
+    }
+
+    modifier onlyWhitelisted(IBloomPool pool, bytes32[] calldata proof) {
+        if (!ISwapFacility(pool.SWAP_FACILITY()).whitelist().isWhitelisted(msg.sender, proof)) {
+            revert NotWhitelisted();
+        }
         _;
     }
 
@@ -49,18 +57,39 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
      * @inheritdoc IEmergencyHandler
      */
     function redeem(IBloomPool pool) external override returns (uint256) {
-        Token memory underlyingInfo = redemptionInfo[address(pool)].underlyingToken;
+        uint256 claimAmount;
+        // Get data for the associated pool
+        RedemptionInfo memory info = redemptionInfo[address(pool)];
+        Token memory underlyingInfo = info.underlyingToken;
+
         address underlyingToken = underlyingInfo.token;
         if (underlyingToken == address(0)) revert PoolNotRegistered();
-        
         uint256 tokenAmount = ERC20(address(pool)).balanceOf(msg.sender);
-        if (tokenAmount == 0) revert NoTokensToRedeem();
-        pool.executeEmergencyBurn(msg.sender, tokenAmount);
 
-        // BloomPool decimals are the same as the underlying token, so we scale down by the oracle's decimals
-        uint256 amount = tokenAmount * underlyingInfo.rate / 10**underlyingInfo.rateDecimals;
-        underlyingToken.safeTransfer(msg.sender, amount);
-        return amount;
+        // Calculate the amount of underlying tokens to send to the user
+        if (info.yieldGenerated) {
+            claimAmount =
+                (tokenAmount * info.accounting.lenderDistro) /
+                info.accounting.lenderShares;
+        } else {
+            claimAmount = tokenAmount;
+        }
+
+        // Update the claim amount if it is greater than the current availablity of underlying tokens
+        if (claimAmount > info.accounting.lenderDistro) claimAmount = info.accounting.lenderDistro;
+        if (claimAmount > info.accounting.totalUnderlying) claimAmount = info.accounting.totalUnderlying;
+
+        uint256 burnAmount = info.accounting.lenderShares * claimAmount / info.accounting.lenderDistro;
+
+        info.accounting.lenderDistro -= claimAmount;
+        info.accounting.lenderShares -= burnAmount;
+        info.accounting.totalUnderlying -= claimAmount;
+
+        if (burnAmount == 0 || claimAmount == 0) revert NoTokensToRedeem();
+        pool.executeEmergencyBurn(msg.sender, burnAmount);
+        underlyingToken.safeTransfer(msg.sender, claimAmount);
+
+        return claimAmount;
     }
 
     /**
@@ -70,53 +99,107 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         IBloomPool pool,
         uint256 id
     ) external override returns (uint256) {
-        uint256 amount;
-        Token memory billTokenInfo = redemptionInfo[address(pool)].billToken;
-        address billToken = billTokenInfo.token;
-        uint256 billDecimals = ERC20(billToken).decimals();
-        uint256 underlyingDecimals = ERC20(address(pool)).decimals();
-
+        uint256 claimAmount;
+        // Get data for the associated pool
+        RedemptionInfo memory info = redemptionInfo[address(pool)];
+        PoolAccounting memory accounting = info.accounting;
+        
         AssetCommitment memory commitment = pool.getBorrowCommitment(id);
+        ClaimStatus memory claimStatus = borrowerClaimStatus[address(pool)][id];
+        if (accounting.borrowerShares == 0) revert NoTokensToRedeem();
+
+        address underlyingToken = info.underlyingToken.token;
+        if (underlyingToken == address(0)) revert PoolNotRegistered();
+        uint256 commitmentAvailable = commitment.committedAmount;
+
         if (commitment.owner != msg.sender) revert InvalidOwner();
+        
+        // If the user has already claimed, update how much they can claim this round
+        if (claimStatus.claimed) {
+            commitmentAvailable = claimStatus.amountRemaining;
+        } 
 
-        if (borrowerClaimStatus[address(pool)][id]) {
-            revert BorrowerAlreadyClaimed();
+        // Calculate the amount of underlying tokens to send to the user
+        if (info.yieldGenerated) {
+            claimAmount = commitmentAvailable * accounting.borrowerDistro / accounting.borrowerShares;
         } else {
-            borrowerClaimStatus[address(pool)][id] = true;
+            claimAmount = commitmentAvailable;
         }
 
-        if (billDecimals == underlyingDecimals) {
-            amount = commitment.committedAmount * billTokenInfo.rate / 10**billTokenInfo.rateDecimals;
-        } else if (billDecimals > underlyingDecimals) {
-            uint256 scalingFactor = 10 ** (billDecimals - underlyingDecimals);
-            amount = commitment.committedAmount * billTokenInfo.rate * scalingFactor / 10**billTokenInfo.rateDecimals;
-        } else {
-            uint256 scalingFactor = 10 ** (underlyingDecimals - billDecimals);
-            amount = commitment.committedAmount * billTokenInfo.rate / 10**billTokenInfo.rateDecimals / scalingFactor;
-        }
+        // Update the claim amount if it is greater than the current availablity of underlying tokens
+        if (claimAmount > accounting.borrowerDistro) claimAmount = accounting.borrowerDistro;
+        if (claimAmount > accounting.totalUnderlying) claimAmount = accounting.totalUnderlying;
 
-        billToken.safeTransfer(msg.sender, amount);
-        return amount;
+        uint256 commitmentUsed = claimAmount * accounting.borrowerShares / accounting.borrowerDistro;
+
+        // Update accounting data
+        redemptionInfo[address(pool)].accounting.borrowerDistro -= claimAmount;
+        redemptionInfo[address(pool)].accounting.borrowerShares -= commitmentUsed;
+        redemptionInfo[address(pool)].accounting.totalUnderlying -= claimAmount;
+
+
+        if (commitmentUsed == 0 || claimAmount == 0) revert NoTokensToRedeem();
+
+        // Update claim status
+        borrowerClaimStatus[address(pool)][id] = ClaimStatus({
+            claimed: true,
+            amountRemaining: commitmentAvailable - commitmentUsed
+        });
+        
+        // Transfer tokens to borrower
+        underlyingToken.safeTransfer(msg.sender, claimAmount);
+        return claimAmount;
+    }
+
+    /**
+     * @inheritdoc IEmergencyHandler
+     */
+    function swap(
+        IBloomPool pool,
+        uint256 underlyingIn,
+        bytes32[] calldata proof
+    ) external override onlyWhitelisted(pool, proof) returns (uint256) {
+        // Get data for the associated pool
+        RedemptionInfo memory info = redemptionInfo[address(pool)];
+        Token memory underlyingToken = info.underlyingToken;
+        Token memory billToken = info.billToken;
+
+        // Calculate the amount of bill tokens to send to the user
+        // TODO: Scaling
+        uint256 inTokenPrice = underlyingToken.rate;
+        uint256 outTokenPrice = billToken.rate;
+        uint256 outAmount = (underlyingIn * inTokenPrice) / outTokenPrice;
+        
+        // Update accounting data
+        redemptionInfo[address(pool)].accounting = PoolAccounting({
+            lenderDistro: info.accounting.lenderDistro,
+            borrowerDistro: info.accounting.borrowerDistro,
+            lenderShares: info.accounting.lenderShares,
+            borrowerShares: info.accounting.borrowerShares,
+            totalUnderlying: info.accounting.totalUnderlying + underlyingIn,
+            totalBill: info.accounting.totalBill - outAmount
+        });
+
+        // Complete the swap
+        underlyingToken.token.safeTransferFrom(
+            msg.sender,
+            address(this),
+            underlyingIn
+        );
+        billToken.token.safeTransferFrom(address(this), msg.sender, outAmount);
+
+        return outAmount;
     }
 
     /**
      * @inheritdoc IEmergencyHandler
      */
     function registerPool(
-        address underlyingToken,
-        address billToken,
-        IOracle underlyingOracle,
-        IOracle billOracle
+        RedemptionInfo memory info
     ) external override onlyPool {
-        if (redemptionInfo[msg.sender].underlyingToken.token != address(0)) revert PoolAlreadyRegistered();
-        
-        (, int256 underlyingAnswer,,,) = underlyingOracle.latestRoundData();
-        (, int256 billAnswer,,,) = billOracle.latestRoundData();
-        if (underlyingAnswer <= 0 || billAnswer <= 0) revert OracleAnswerNegative();
-
-        redemptionInfo[msg.sender] = RedemptionInfo(
-            Token(underlyingToken, uint256(underlyingAnswer), underlyingOracle.decimals()),
-            Token(billToken, uint256(billAnswer), billOracle.decimals())
-        );
+        if (redemptionInfo[msg.sender].underlyingToken.token != address(0)) {
+            revert PoolAlreadyRegistered();
+        }
+        redemptionInfo[msg.sender] = info;
     }
 }
