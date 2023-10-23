@@ -14,7 +14,9 @@ import {IMockSwapFacility} from "./interfaces/IMockSwapFacility.sol";
 
 import {MockERC20} from "./MockERC20.sol";
 import {MockOracle} from "./MockOracle.sol";
+
 import {ISwapRecipient} from "src/interfaces/ISwapRecipient.sol";
+import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 
 contract MockSwapFacility is IMockSwapFacility {
     uint256 internal constant WAD = 1e18;
@@ -27,6 +29,7 @@ contract MockSwapFacility is IMockSwapFacility {
     address public immutable billyTokenOracle;
 
     uint256 public exchangeRate;
+    IWhitelist public whitelist;
 
     struct PendingSwap {
         address to;
@@ -76,5 +79,9 @@ contract MockSwapFacility is IMockSwapFacility {
         uint256 outAmount = inToken == address(token0) ? inAmount * WAD / exchangeRate : inAmount * exchangeRate / WAD;
 
         pendingSwaps.push(PendingSwap({to: msg.sender, token: MockERC20(outToken), amount: outAmount}));
+    }
+
+    function setWhitelist(IWhitelist _whitelist) external {
+        whitelist = _whitelist;
     }
 }

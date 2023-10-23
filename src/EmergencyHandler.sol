@@ -103,7 +103,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         // Get data for the associated pool
         RedemptionInfo memory info = redemptionInfo[address(pool)];
         PoolAccounting memory accounting = info.accounting;
-        
+
         AssetCommitment memory commitment = pool.getBorrowCommitment(id);
         ClaimStatus memory claimStatus = borrowerClaimStatus[address(pool)][id];
         if (accounting.borrowerShares == 0) revert NoTokensToRedeem();
@@ -165,11 +165,19 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         Token memory billToken = info.billToken;
 
         // Calculate the amount of bill tokens to send to the user
-        // TODO: Scaling
+        uint256 scalingFactor = 10**(billToken.rateDecimals - underlyingToken.rateDecimals);
+
         uint256 inTokenPrice = underlyingToken.rate;
         uint256 outTokenPrice = billToken.rate;
-        uint256 outAmount = (underlyingIn * inTokenPrice) / outTokenPrice;
+        uint256 outAmount = underlyingIn * inTokenPrice * scalingFactor / outTokenPrice;
         
+        // Update the amount if it is greater than the current availablity of bill tokens
+        if (outAmount > info.accounting.totalBill) {
+            outAmount = info.accounting.totalBill;
+            // Recalculate the amount of underlying tokens to send to the user
+            underlyingIn = outAmount * outTokenPrice / inTokenPrice / scalingFactor;
+        }
+
         // Update accounting data
         redemptionInfo[address(pool)].accounting = PoolAccounting({
             lenderDistro: info.accounting.lenderDistro,
@@ -186,7 +194,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
             address(this),
             underlyingIn
         );
-        billToken.token.safeTransferFrom(address(this), msg.sender, outAmount);
+        billToken.token.safeTransfer(msg.sender, outAmount);
 
         return outAmount;
     }

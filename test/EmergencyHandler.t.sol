@@ -19,12 +19,14 @@ import {MockBloomPool} from "./mock/MockBloomPool.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
+import {MockWhitelist} from "./mock/MockWhitelist.sol";
 
 import {AssetCommitment} from "src/lib/CommitmentsLib.sol";
 import {EmergencyHandler, IEmergencyHandler} from "src/EmergencyHandler.sol";
 import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
 
 import {IBloomPool} from "src/interfaces/IBloomPool.sol";
+import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 
 contract EmergencyHandlerTest is Test {
     address internal multisig = makeAddr("multisig");
@@ -36,7 +38,8 @@ contract EmergencyHandlerTest is Test {
     MockBPSFeed internal bpsFeed;
     MockOracle internal stableOracle;
     MockOracle internal billyOracle;
-    
+    MockWhitelist internal whitelist;
+
     ExchangeRateRegistry internal registry;
     EmergencyHandler internal handler;
 
@@ -53,6 +56,8 @@ contract EmergencyHandlerTest is Test {
         billyOracle = new MockOracle(8);
         bpsFeed = new MockBPSFeed();
         swap = new MockSwapFacility(stableToken, billyToken, stableOracle, billyOracle);
+        whitelist = new MockWhitelist();
+        swap.setWhitelist(IWhitelist(address(whitelist)));
         pool = new MockBloomPool(address(stableToken), address(billyToken), address(swap));
         vm.label(address(pool), "pool");
         pool.setCommitPhaseEnd(block.timestamp + 100000);
@@ -180,6 +185,25 @@ contract EmergencyHandlerTest is Test {
         vm.stopPrank();
     }
 
+    function test_marketMakerSwap() public {
+        address marketMaker = _makeWhitelistedAddr("marketMaker");
+        uint256 stableAmount = (100e6 * LEVERAGE_BPS / BPS) * 1e18 / 1.025e18;
+        stableToken.mint(marketMaker, stableAmount);
+        _registerPoolWithBillTokens(100e6);
+        uint256 startingStableBalance = stableToken.balanceOf(address(handler));
+        uint256 startingBillyBalance = billyToken.balanceOf(address(handler));
+        // Successfully swap
+        vm.startPrank(marketMaker);
+        stableToken.approve(address(handler), stableAmount);
+        uint256 outAmount = handler.swap(IBloomPool(address(pool)), stableAmount, new bytes32[](0));
+        vm.stopPrank();
+
+        assertEq(stableToken.balanceOf(address(handler)), startingStableBalance + stableAmount);
+        assertEq(billyToken.balanceOf(address(handler)), startingBillyBalance - outAmount);
+        assertEq(billyToken.balanceOf(marketMaker), outAmount);
+        assertEq(stableToken.balanceOf(marketMaker), 0);
+    }
+
     function _registerPool(uint256 borrowAmount) internal {
         pool.setState(MockBloomPool.State.EmergencyExit);
         pool.setEmergencyHandler(address(handler));
@@ -202,7 +226,7 @@ contract EmergencyHandlerTest is Test {
 
         IEmergencyHandler.RedemptionInfo memory redemptionInfo = IEmergencyHandler.RedemptionInfo(
             IEmergencyHandler.Token(address(stableToken), 1e8, stableToken.decimals()),
-            IEmergencyHandler.Token(address(billyToken), 100e8, billyToken.decimals()),
+            IEmergencyHandler.Token(address(billyToken), 102.5e8, billyToken.decimals()),
             IEmergencyHandler.PoolAccounting(
                 lenderDistro,
                 borrowerDistro,
@@ -217,6 +241,50 @@ contract EmergencyHandlerTest is Test {
         vm.startPrank(address(pool));
         handler.registerPool(redemptionInfo);
         vm.stopPrank();
+    }
+
+    function _registerPoolWithBillTokens(uint256 borrowAmount) public {
+        pool.setState(MockBloomPool.State.EmergencyExit);
+        pool.setEmergencyHandler(address(handler));
+
+        stableOracle.setAnswer(1e8);
+        billyOracle.setAnswer(102.5e8);
+        bpsFeed.setRate(1e4);
+
+        uint256 lenderAmount = borrowAmount * LEVERAGE_BPS / BPS;
+        stableToken.mint(address(handler), lenderAmount * 1e18 / 1.025e18);
+        billyToken.mint(address(handler), lenderAmount * 1e12 / 2);
+
+        uint256 scalingFactor = 10 ** (billyToken.decimals() - stableToken.decimals());
+        uint256 additionalValue = billyToken.balanceOf(address(handler)) * uint256(billyOracle.latestAnswer()) / 1e8 / scalingFactor;
+        uint256 expectedTotalBalance = stableToken.balanceOf(address(handler)) + additionalValue;
+
+        uint256 lenderYield = lenderAmount * (BPS_FEED_VALUE - BPS) * 180 days / 360 days / BPS;
+        uint256 lenderDistro = lenderAmount + lenderYield;
+        uint256 borrowerDistro = expectedTotalBalance - lenderDistro;
+
+        IEmergencyHandler.RedemptionInfo memory redemptionInfo = IEmergencyHandler.RedemptionInfo(
+            IEmergencyHandler.Token(address(stableToken), 1e8, stableToken.decimals()),
+            IEmergencyHandler.Token(address(billyToken), uint256(billyOracle.latestAnswer()), billyToken.decimals()),
+            IEmergencyHandler.PoolAccounting(
+                lenderDistro,
+                borrowerDistro,
+                lenderAmount,
+                lenderAmount * BPS / LEVERAGE_BPS,
+                stableToken.balanceOf(address(handler)),
+                billyToken.balanceOf(address(handler))
+            ),
+            true
+        );
+
+        vm.startPrank(address(pool));
+        handler.registerPool(redemptionInfo);
+        vm.stopPrank();
+    }
+
+    function _makeWhitelistedAddr(string memory label) internal returns (address addr) {
+        addr = makeAddr(string(abi.encodePacked(label, " (whitelisted)")));
+        whitelist.add(addr);
     }
     
 }
