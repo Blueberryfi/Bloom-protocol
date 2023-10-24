@@ -102,4 +102,8 @@ contract MockBloomPool is MockERC20 {
     function setCommitPhaseEnd(uint256 newCommitPhaseEnd) external {
         COMMIT_PHASE_END = newCommitPhaseEnd;
     }
+
+    function SWAP_FACILITY() external view returns (address) {
+        return address(swap);
+    }
 }
