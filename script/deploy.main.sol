@@ -76,7 +76,7 @@ contract Deploy is Test, Script {
         // _deployBPSFeed();
 
         // Deploy protocol
-        BloomFactory factory = _deployBloomFactory();
+        BloomFactory factory = _deployBloomFactoryWithCreate2("BlueberryBloom");
 
         IRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
 
@@ -149,11 +149,25 @@ contract Deploy is Test, Script {
     }
     */
 
-    function _deployBloomFactory() internal returns (BloomFactory) {
-        BloomFactory factory = new BloomFactory();
-        vm.label(address(factory), "BloomFactory");
-        console2.log("BloomFactory deployed at:", address(factory));
-        return factory;
+
+    function _deployBloomFactoryWithCreate2(string memory salt) internal returns (BloomFactory) {
+        if (!DEPLOY_FACTORY) {
+            console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
+            return BloomFactory(BLOOM_FACTORY_ADDRESS);
+        } else {
+            address factoryAddr;
+            bytes memory bytecode = type(BloomFactory).creationCode;
+            assembly {
+                factoryAddr := create2(0, add(bytecode, 32), mload(bytecode), salt)
+
+                if iszero(extcodesize(factoryAddr)) {
+                    revert(0, 0)
+                }
+            }
+            vm.label(factoryAddr, "BloomFactory");
+            console2.log("BloomFactory deployed at:", factoryAddr);
+            return BloomFactory(factoryAddr);
+        }
     }
 
     // function _deploySwapFacility() internal {
