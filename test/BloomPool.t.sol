@@ -18,10 +18,14 @@ import {BloomPool, State, AssetCommitment} from "src/BloomPool.sol";
 import {IBloomPool} from "src/interfaces/IBloomPool.sol";
 import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
+import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
+import {EmergencyHandler} from "src/EmergencyHandler.sol";
+
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
+import {MockOracle} from "./mock/MockOracle.sol";
 
 contract BloomPoolTest is Test {
     BloomPool internal pool;
@@ -30,9 +34,16 @@ contract BloomPoolTest is Test {
     MockERC20 internal billyToken;
     MockWhitelist internal whitelist;
     MockSwapFacility internal swap;
-    address internal treasury = makeAddr("treasury");
-    address internal emergencyHandler = makeAddr("emergencyHandler");
+    MockOracle internal stableOracle;
+    MockOracle internal billOracle;
     MockBPSFeed internal feed;
+
+    address internal treasury = makeAddr("treasury");
+    address internal multisig = makeAddr("multisig");
+    address internal factory = makeAddr("factory");
+    
+    ExchangeRateRegistry internal registry = new ExchangeRateRegistry(multisig, factory);
+    EmergencyHandler internal emergencyHandler = new EmergencyHandler(registry);
 
     uint256 internal commitPhaseDuration;
     uint256 internal poolPhaseDuration;
@@ -53,7 +64,7 @@ contract BloomPoolTest is Test {
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 amount);
-    event EmergencyWithdraw(address indexed owner);
+    event EmergencyWithdrawExecuted(address indexed from, address indexed to, uint256 amount);
 
     function setUp() public {
         stableToken = new MockERC20(6);
@@ -61,7 +72,9 @@ contract BloomPoolTest is Test {
         billyToken = new MockERC20(18);
         vm.label(address(billyToken), "BillyToken");
         whitelist = new MockWhitelist();
-        swap = new MockSwapFacility(stableToken, billyToken);
+        stableOracle = new MockOracle(8);
+        billOracle = new MockOracle(8);
+        swap = new MockSwapFacility(stableToken, billyToken, stableOracle, billOracle);
         feed = new MockBPSFeed();
 
         feed.setRate(BPS_FEED_VALUE);
@@ -73,7 +86,7 @@ contract BloomPoolTest is Test {
             swapFacility: address(swap),
             treasury: treasury,
             leverageBps: 4 * BPS,
-            emergencyHandler: emergencyHandler,
+            emergencyHandler: address(emergencyHandler),
             minBorrowDeposit: 100.0e6,
             commitPhaseDuration: commitPhaseDuration = 3 days,
             swapTimeout: 7 days,
@@ -84,6 +97,11 @@ contract BloomPoolTest is Test {
             name: "Term Bound Token 6 month 2023-06-1",
             symbol: "TBT-1"
         });
+
+        // Register the pool in the exchange rate registry.
+        vm.startPrank(multisig);
+        registry.registerToken(pool);
+        vm.stopPrank();
     }
 
     function testDefaultState() public {
@@ -462,7 +480,7 @@ contract BloomPoolTest is Test {
     function testEmergencyWithdrawPreHold() public {
         // Deposit Stables into pool
         address user = makeWhitelistedAddr("user");
-        uint256 amount = 1000e18;
+        uint256 amount = 1000e6;
         stableToken.mint(user, amount);
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
@@ -472,41 +490,42 @@ contract BloomPoolTest is Test {
         vm.stopPrank();
         
         vm.warp(pool.COMMIT_PHASE_END());
+        pool.processBorrowerCommit(0);
+        pool.processLenderCommit(0);
         swap.setRate(1e18);
         pool.initiatePreHoldSwap(new bytes32[](0));
+        stableToken.mint(address(pool), pool.totalMatchAmount());
 
         // Fails to emergency withdraw before the pre-hold swap timeout
-        vm.startPrank(emergencyHandler);
+        vm.startPrank(multisig);
         vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPreHoldSwap)));
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
+
+        //Set up oracle pricing and token registration
+        stableOracle.setAnswer(1e8);
+        billOracle.setAnswer(1e8);
 
         // Fast Forward to Emergency Exit Period
-        vm.warp(pool.POOL_PHASE_END());
+        vm.warp(pool.PRE_HOLD_SWAP_TIMEOUT_END());
         assertEq(pool.state(), State.EmergencyExit);
 
-        // Fails to revert with none emergency handler account
-        vm.startPrank(user);
-        vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
-        pool.emergencyWithdrawTo(user);
-        vm.stopPrank();
+        uint256 stableBalance = stableToken.balanceOf(address(pool));
 
-        uint256 billyBalance = billyToken.balanceOf(address(pool));
-
-        vm.startPrank(emergencyHandler);
+        vm.startPrank(multisig);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdraw(emergencyHandler);
-        pool.emergencyWithdrawTo(emergencyHandler);
+        emit EmergencyWithdrawExecuted(address(pool), address(emergencyHandler), stableBalance);
+        pool.emergencyWithdraw();
         vm.stopPrank();
         
-        assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);
-        assertEq(billyToken.balanceOf(address(pool)), 0);
+        assertEq(stableToken.balanceOf(address(emergencyHandler)), stableBalance);
+        assertEq(stableToken.balanceOf(address(pool)), 0);
     }
 
     function testEmergencyWithdrawPostHold() public {
         // Deposit Stables into pool
         address user = makeWhitelistedAddr("user");
-        uint256 amount = 1000e18;
+        uint256 amount = 1000e6;
         stableToken.mint(user, amount);
         vm.startPrank(user);
         stableToken.approve(address(pool), type(uint256).max);
@@ -517,6 +536,8 @@ contract BloomPoolTest is Test {
         
         vm.warp(pool.COMMIT_PHASE_END());
         swap.setRate(1e18);
+        pool.processBorrowerCommit(0);
+        pool.processLenderCommit(0);
         pool.initiatePreHoldSwap(new bytes32[](0));
         assertEq(pool.state(), State.PendingPreHoldSwap);
 
@@ -528,6 +549,7 @@ contract BloomPoolTest is Test {
         vm.warp(pool.POOL_PHASE_END());
         assertEq(pool.state(), State.ReadyPostHoldSwap);
 
+        swap.setRate(1.025e18);
         vm.expectEmit(true, true, true, true);
         emit ExplictStateTransition(State.ReadyPostHoldSwap, State.PendingPostHoldSwap);
         pool.initiatePostHoldSwap(new bytes32[](0));
@@ -536,31 +558,32 @@ contract BloomPoolTest is Test {
         vm.warp(pool.POOL_PHASE_END());
 
         // Fails to emergency withdraw before the post-hold swap timeout
-        vm.startPrank(emergencyHandler);
+        vm.startPrank(multisig);
         vm.expectRevert(abi.encodeWithSelector(IBloomPool.InvalidState.selector, (State.PendingPostHoldSwap)));
-        pool.emergencyWithdrawTo(emergencyHandler);
+        pool.emergencyWithdraw();
         vm.stopPrank();
+
+        stableOracle.setAnswer(1e8);
+        billOracle.setAnswer(102.5e8);
 
         // Fast Forward to Emergency Exit Period
         vm.warp(pool.POST_HOLD_SWAP_TIMEOUT_END());
+        stableToken.mint(address(pool), pool.totalMatchAmount() * 1e18 / 1.025e18);
+        billyToken.mint(address(pool), pool.totalMatchAmount() * 1e12 / 2);
         assertEq(pool.state(), State.EmergencyExit);
 
-        // Fails to revert with none emergency handler account
-        vm.startPrank(user);
-        vm.expectRevert(IBloomPool.NotEmergencyHandler.selector);
-        pool.emergencyWithdrawTo(user);
-        vm.stopPrank();
-
+        uint256 stableBalance = stableToken.balanceOf(address(pool));
         uint256 billyBalance = billyToken.balanceOf(address(pool));
                 
-        vm.startPrank(emergencyHandler);
+        vm.startPrank(multisig);
         vm.expectEmit(true, true, true, true);
-        emit EmergencyWithdraw(emergencyHandler);
-        pool.emergencyWithdrawTo(emergencyHandler);
+        emit EmergencyWithdrawExecuted(address(pool), address(emergencyHandler), stableBalance);
+        pool.emergencyWithdraw();
         vm.stopPrank();
         
-        assertEq(billyToken.balanceOf(emergencyHandler), billyBalance);
-        assertEq(billyToken.balanceOf(address(pool)), 0);
+        assertEq(stableToken.balanceOf(address(emergencyHandler)), stableBalance);
+        assertEq(billyToken.balanceOf(address(emergencyHandler)), billyBalance);
+        assertEq(stableToken.balanceOf(address(pool)), 0);
     }
 
     function assertEq(State a, State b) internal {

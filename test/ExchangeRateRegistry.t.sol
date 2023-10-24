@@ -14,13 +14,16 @@ import {Test} from "forge-std/Test.sol";
 
 import {BloomPool, State, AssetCommitment} from "src/BloomPool.sol";
 import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
-import {IBloomPool} from "src/interfaces/IBloomPool.sol";
-import {IWhitelist} from "src/interfaces/IWhitelist.sol";
-import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
+
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockWhitelist} from "./mock/MockWhitelist.sol";
 import {MockSwapFacility} from "./mock/MockSwapFacility.sol";
 import {MockBPSFeed} from "./mock/MockBPSFeed.sol";
+import {MockOracle} from "./mock/MockOracle.sol";
+
+import {IBloomPool} from "src/interfaces/IBloomPool.sol";
+import {IWhitelist} from "src/interfaces/IWhitelist.sol";
+import {IBPSFeed} from "src/interfaces/IBPSFeed.sol";
 
 contract ExchangeRateRegistryTest is Test {
     BloomPool internal pool;
@@ -28,6 +31,8 @@ contract ExchangeRateRegistryTest is Test {
     MockERC20 internal billyToken;
     MockWhitelist internal whitelist;
     MockSwapFacility internal swap;
+    MockOracle internal oracle1;
+    MockOracle internal oracle2;
 
     address internal treasury = makeAddr("treasury");
     address internal registryOwner = makeAddr("owner");
@@ -57,7 +62,7 @@ contract ExchangeRateRegistryTest is Test {
         stableToken = new MockERC20(6);
         billyToken = new MockERC20(18);
         whitelist = new MockWhitelist();
-        swap = new MockSwapFacility(stableToken, billyToken);
+        swap = new MockSwapFacility(stableToken, billyToken, oracle1, oracle2);
         feed = new MockBPSFeed();
 
         feed.setRate(ORACLE_RATE);

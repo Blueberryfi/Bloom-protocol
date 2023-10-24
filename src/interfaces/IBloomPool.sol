@@ -35,7 +35,7 @@ interface IBloomPool {
     error NotWhitelisted();
     error NoCommitToProcess();
     error CommitTooSmall();
-
+    error OracleAnswerNegative();
     error CanOnlyWithdrawProcessedCommit(uint256 id);
     error NoCommitToWithdraw();
 
@@ -55,7 +55,8 @@ interface IBloomPool {
     event BorrowerWithdraw(address indexed owner, uint256 indexed id, uint256 amount);
     event LenderWithdraw(address indexed owner, uint256 sharesRedeemed, uint256 amount);
 
-    event EmergencyWithdraw(address indexed to);
+    event EmergencyWithdrawExecuted(address indexed from, address indexed to, uint256 amount);
+    event EmergencyBurn(address indexed user, uint256 amount);
 
     /// @notice Initiates the pre-hold swap.
     function initiatePreHoldSwap(bytes32[] calldata proof) external;
@@ -77,6 +78,21 @@ interface IBloomPool {
      * @return newCommitmentId The commitment ID for the lender deposit.
      */
     function depositLender(uint256 amount) external returns (uint256 newCommitmentId);
+
+    /**
+     * @notice Sends all funds to the EmergencyHandler contract
+     * @dev This is a permissioned function that can only be executed by the owner of the BloomPool
+     *     It can only be executed when the pool is in Emergency mode.
+     */
+    function emergencyWithdraw() external;
+
+    /**
+     * @notice Burns TBY shares when users redeem from the EmergencyHandler
+     * @dev This is a permissioned function that can only be called by the EmergencyHandler contract
+     * @param from The account from which the TBY tokens will be burned from
+     * @param amount The amount of tokens to burn
+     */
+    function executeEmergencyBurn(address from, uint256 amount) external;
 
     /**
      * @notice Processes a borrower's commit, calculates the included and excluded amounts, and refunds any unmatched amounts.

@@ -12,6 +12,7 @@ pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IBloomPool, State} from "./interfaces/IBloomPool.sol";
+import {IEmergencyHandler} from "./interfaces/IEmergencyHandler.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -22,6 +23,7 @@ import {CommitmentsLib, Commitments, AssetCommitment} from "./lib/CommitmentsLib
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
 import {IBPSFeed} from "./interfaces/IBPSFeed.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     using CommitmentsLib for Commitments;
@@ -56,6 +58,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     Commitments internal borrowers;
     Commitments internal lenders;
     State internal setState = State.Commit;
+    State internal stateBeforeEmergency;
     uint128 internal borrowerDistribution;
     uint128 internal totalBorrowerShares;
     uint128 internal lenderDistribution;
@@ -72,6 +75,11 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     modifier onlyAfterState(State lastInvalidState) {
         State currentState = state();
         if (currentState <= lastInvalidState) revert InvalidState(currentState);
+        _;
+    }
+
+    modifier onlyEmergencyHandler() {
+        if (msg.sender != EMERGENCY_HANDLER) revert NotEmergencyHandler();
         _;
     }
 
@@ -214,13 +222,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             uint256 totalMatched = totalMatchAmount();
 
             // Lenders get paid first, borrowers carry any shortfalls/excesses due to slippage.
-            uint256 rateAppreciation = IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() - BPS;
-            uint256 yieldEarned = totalMatched * rateAppreciation * POOL_PHASE_DURATION / ONE_YEAR / BPS;
-
-            uint256 lenderReturn = Math.min(
-                totalMatched + yieldEarned,
-                outAmount
-            );
+            uint256 lenderReturn = _calculateLenderReturn(totalMatched, outAmount);
 
             uint256 borrowerReturn = outAmount - lenderReturn;
             uint256 lenderReturnFee = (lenderReturn - totalMatched) * LENDER_RETURN_FEE / BPS;
@@ -277,11 +279,73 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     // ========= Emergency Withdraw Methods ==========
 
-    function emergencyWithdrawTo(address to) external onlyState(State.EmergencyExit) {
-        if (msg.sender != EMERGENCY_HANDLER) revert NotEmergencyHandler();
-        emit EmergencyWithdraw(to);
-        UNDERLYING_TOKEN.safeTransferAll(to);
-        BILL_TOKEN.safeTransferAll(to);
+    function emergencyWithdraw() external onlyState(State.EmergencyExit) {
+        uint256 underlyingBalance = UNDERLYING_TOKEN.balanceOf(address(this));
+        uint256 billBalance = BILL_TOKEN.balanceOf(address(this));
+        uint256 underlyingPrice = 1e8;
+
+        IOracle billOracle = IOracle(ISwapFacility(SWAP_FACILITY).billyTokenOracle());
+        uint256 currentBillPrice = uint256(billOracle.latestAnswer());
+        if (currentBillPrice <= 0) revert OracleAnswerNegative();
+
+        uint256 underlyingDecimals = ERC20(UNDERLYING_TOKEN).decimals();
+        uint256 billDecimals = ERC20(BILL_TOKEN).decimals();
+        uint256 scalingFactor = 10 ** (billDecimals - underlyingDecimals);
+        
+        uint256 additionalValue = BILL_TOKEN.balanceOf(address(this)) * currentBillPrice / underlyingPrice / scalingFactor;
+        uint256 expectedTotalBalance = underlyingBalance + additionalValue;
+       
+        uint256 lenderDistro;
+        uint256 borrowerDistro;
+        uint256 totalMatched;
+        bool yieldGenerating;
+        // If we are in the emergency exit state before the end of the pool phase then we
+        //    know this exit occured during the pre-hold swap phase, so users should be able
+        //    to redeem USDC 1 for 1.
+        if (block.timestamp >= POOL_PHASE_END) {
+            totalMatched = totalMatchAmount();
+            lenderDistro = _calculateLenderReturn(totalMatched, expectedTotalBalance);
+            borrowerDistro = expectedTotalBalance - lenderDistro;
+            yieldGenerating = true;
+        } else {
+            lenderDistro = lenders.totalAssetsCommitted;
+            borrowerDistro = expectedTotalBalance - lenderDistro;
+            yieldGenerating = false;
+        }
+
+        if (underlyingBalance > 0) {
+            UNDERLYING_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
+            emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, underlyingBalance);
+        }
+        
+        if (billBalance > 0) {
+            BILL_TOKEN.safeTransferAll(EMERGENCY_HANDLER);
+            emit EmergencyWithdrawExecuted(address(this), EMERGENCY_HANDLER, billBalance);
+        }
+
+        IEmergencyHandler.RedemptionInfo memory redemptionInfo = IEmergencyHandler.RedemptionInfo(
+            IEmergencyHandler.Token(UNDERLYING_TOKEN, underlyingPrice, underlyingDecimals),
+            IEmergencyHandler.Token(BILL_TOKEN, currentBillPrice, billDecimals),
+            IEmergencyHandler.PoolAccounting(
+                lenderDistro,
+                borrowerDistro,
+                totalMatched,
+                totalMatched * BPS / LEVERAGE_BPS,
+                underlyingBalance,
+                billBalance
+            ),
+            yieldGenerating
+        );
+
+        IEmergencyHandler(EMERGENCY_HANDLER).registerPool(redemptionInfo);
+    }
+
+    function executeEmergencyBurn(
+        address from,
+        uint256 amount
+    ) external onlyState(State.EmergencyExit) onlyEmergencyHandler {
+        emit EmergencyBurn(from, amount);
+        _burn(from, amount);
     }
 
     // ================ View Methods =================
@@ -341,5 +405,11 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
     function getDistributionInfo() external view returns (uint128, uint128, uint128, uint128) {
         return (borrowerDistribution, totalBorrowerShares, lenderDistribution, totalLenderShares);
+    }
+
+    function _calculateLenderReturn(uint256 totalMatched, uint256 outAmount) internal view returns (uint256) {
+        uint256 rateAppreciation = IBPSFeed(LENDER_RETURN_BPS_FEED).getWeightedRate() - BPS;
+        uint256 yieldEarned = totalMatched * rateAppreciation * POOL_PHASE_DURATION / ONE_YEAR / BPS;
+        return Math.min(totalMatched + yieldEarned, outAmount);
     }
 }
