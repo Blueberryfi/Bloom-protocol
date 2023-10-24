@@ -163,20 +163,12 @@ contract Deploy is Test, Script {
     */
 
 
-    function _deployBloomFactoryWithCreate2(string memory salt) internal returns (BloomFactory) {
+    function _deployBloomFactoryWithCreate2(bytes32 salt) internal returns (BloomFactory) {
         if (!DEPLOY_FACTORY) {
             console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
             return BloomFactory(BLOOM_FACTORY_ADDRESS);
         } else {
-            address factoryAddr;
-            bytes memory bytecode = type(BloomFactory).creationCode;
-            assembly {
-                factoryAddr := create2(0, add(bytecode, 32), mload(bytecode), salt)
-
-                if iszero(extcodesize(factoryAddr)) {
-                    revert(0, 0)
-                }
-            }
+            address factoryAddr = address(new BloomFactory{salt: salt}(DEPLOYER));
             vm.label(factoryAddr, "BloomFactory");
             console2.log("BloomFactory deployed at:", factoryAddr);
             return BloomFactory(factoryAddr);
