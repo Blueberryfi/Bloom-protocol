@@ -89,7 +89,7 @@ contract Deploy is Test, Script {
         // Deploy proxy for emergency handler
         TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
             address(emergencyHandlerImplementation),
-            DEPLOYER,
+            MULTISIG,
             ""
         );
 

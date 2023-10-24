@@ -30,7 +30,7 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 
 contract Deploy is Test, Script {
-    address internal constant DEPLOYER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
+    address internal constant DEPLOYER = 0x263c0a1ff85604f0ee3f4160cAa445d0bad28dF7;
     address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
     // Replace with real address if we arent deploying a new factory or registry
     address internal constant BLOOM_FACTORY_ADDRESS = address(0);
