@@ -186,7 +186,7 @@ contract Deploy is Test, Script {
         if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
             address factoryAddress = DEPLOY_FACTORY ? address(bloomFactory) : BLOOM_FACTORY_ADDRESS;
 
-            ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, factoryAddress);
+            ExchangeRateRegistry registry = new ExchangeRateRegistry(MULTISIG, factoryAddress);
             vm.label(address(registry), "ExchangeRateRegistry");
             console2.log("ExchangeRateRegistry deployed at: ", address(registry));
             return registry;
