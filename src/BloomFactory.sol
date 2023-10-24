@@ -26,6 +26,10 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
     address private _lastCreatedPool;
     mapping(address => bool) private _isPoolFromFactory;
 
+    constructor(address owner) Ownable2Step() {
+        _transferOwnership(owner);
+    }
+
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
     }

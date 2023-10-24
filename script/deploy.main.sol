@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
+import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
@@ -30,6 +31,7 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
+    address internal constant MULTISIG = address(0);
     address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
     // Replace with real address if we arent deploying a new factory or registry
     address internal constant BLOOM_FACTORY_ADDRESS = address(0);
@@ -81,13 +83,21 @@ contract Deploy is Test, Script {
 
         ExchangeRateRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
 
-        EmergencyHandler emergencyHandler = _deployEmergencyHandler(exchangeRateRegistry);
+        // Deploy emergency handler logic
+        EmergencyHandler emergencyHandlerImplementation = _deployEmergencyHandler(exchangeRateRegistry);
+
+        // Deploy proxy for emergency handler
+        TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
+            address(emergencyHandlerImplementation),
+            DEPLOYER,
+            ""
+        );
 
         IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
             TREASURY,
             address(WHITELIST_BORROW),
             address(LENDER_RETURN_BPS_FEED),
-            address(emergencyHandler),
+            address(emergencyHandlerProxy),
             50e4,
             10.0e6,
             commitPhaseDuration,

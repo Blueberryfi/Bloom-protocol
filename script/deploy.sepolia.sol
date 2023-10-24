@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
+import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
@@ -29,7 +30,8 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 
 contract Deploy is Test, Script {
-    address internal constant DEPLOYER = 0x3031303BB07C35d489cd4B7E6cCd6Fb16eA2b3a1;
+    address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
+    address internal constant MULTISIG = address(0);
     address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
     // Replace with real address if we arent deploying a new factory or registry
     address internal constant BLOOM_FACTORY_ADDRESS = address(0);
@@ -87,13 +89,21 @@ contract Deploy is Test, Script {
 
         ExchangeRateRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
 
-        EmergencyHandler emergencyHandler = _deployEmergencyHandler(exchangeRateRegistry);
+        // Deploy emergency handler logic
+        EmergencyHandler emergencyHandlerImplementation = _deployEmergencyHandler(exchangeRateRegistry);
+
+        // Deploy proxy for emergency handler
+        TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
+            address(emergencyHandlerImplementation),
+            DEPLOYER,
+            ""
+        );
 
         IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
             TREASURY,
             address(WHITELIST),
             address(BPSFEED),
-            address(emergencyHandler),
+            address(emergencyHandlerProxy),
             50e4,
             10.0e6,
             commitPhaseDuration,
@@ -111,7 +121,6 @@ contract Deploy is Test, Script {
             MIN_STABLE_VALUE,
             MAX_BILL_VALUE
         );
-
         pool = factory.create(
             "Term Bound Yield 6 month feb-2024-Batch2",
             "TBY-feb-2024-Batch2",
@@ -129,6 +138,7 @@ contract Deploy is Test, Script {
         vm.label(address(swap), "SwapFacility");
         console2.log("SwapFacility deployed at:", address(swap));
 
+        factory.transferOwnership(MULTISIG);
         vm.stopBroadcast();
     }
 
@@ -159,20 +169,12 @@ contract Deploy is Test, Script {
     */
 
 
-    function _deployBloomFactoryWithCreate2(string memory salt) internal returns (BloomFactory) {
+    function _deployBloomFactoryWithCreate2(bytes32 salt) internal returns (BloomFactory) {
         if (!DEPLOY_FACTORY) {
             console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
             return BloomFactory(BLOOM_FACTORY_ADDRESS);
         } else {
-            address factoryAddr;
-            bytes memory bytecode = type(BloomFactory).creationCode;
-            assembly {
-                factoryAddr := create2(0, add(bytecode, 32), mload(bytecode), salt)
-
-                if iszero(extcodesize(factoryAddr)) {
-                    revert(0, 0)
-                }
-            }
+            address factoryAddr = address(new BloomFactory{salt: salt}(DEPLOYER));
             vm.label(factoryAddr, "BloomFactory");
             console2.log("BloomFactory deployed at:", factoryAddr);
             return BloomFactory(factoryAddr);
