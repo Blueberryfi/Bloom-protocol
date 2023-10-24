@@ -56,7 +56,7 @@ contract Deploy is Test, Script {
 
     uint256 internal constant SPREAD = 0.0125e4; // 0.125%
     uint256 internal constant MIN_STABLE_VALUE = 0.995e8;
-    uint256 internal constant MAX_BILL_VALUE = 107.6e8;
+    uint256 internal constant MAX_BILL_VALUE = 112.6e8;
     uint256 internal constant BPS = 1e4;
     uint256 internal constant commitPhaseDuration = 10 days;
     uint256 internal constant poolPhaseDuration = 2 days;
@@ -108,7 +108,7 @@ contract Deploy is Test, Script {
             commitPhaseDuration,
             swapTimeout,
             poolPhaseDuration,
-            300, // 3%
+            0, // 0%
             0 // 0%
         );
 
@@ -121,8 +121,8 @@ contract Deploy is Test, Script {
             MAX_BILL_VALUE
         );
         pool = factory.create(
-            "Term Bound Yield 6 month feb-2024-Batch2",
-            "TBY-feb-2024-Batch2",
+            "Term Bound Yield 6 month apr-2024-BatchA",
+            "TBY-apr24(a)",
             UNDERLYING_TOKEN,
             BILL_TOKEN,
             exchangeRateRegistry,
