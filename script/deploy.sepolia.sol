@@ -30,7 +30,7 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 
 contract Deploy is Test, Script {
-    address internal constant DEPLOYER = 0x263c0a1ff85604f0ee3f4160cAa445d0bad28dF7;
+    address internal constant DEPLOYER = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
     address internal constant MULTISIG = address(0);
     address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
     // Replace with real address if we arent deploying a new factory or registry
@@ -225,7 +225,7 @@ contract Deploy is Test, Script {
         if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
             address factoryAddress = DEPLOY_FACTORY ? address(bloomFactory) : BLOOM_FACTORY_ADDRESS;
 
-            ExchangeRateRegistry registry = new ExchangeRateRegistry(MULTISIG, factoryAddress);
+            ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, factoryAddress);
             vm.label(address(registry), "ExchangeRateRegistry");
             console2.log("ExchangeRateRegistry deployed at: ", address(registry));
             return registry;
