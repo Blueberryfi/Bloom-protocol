@@ -40,7 +40,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     address public immutable BILL_TOKEN;
     IWhitelist public immutable WHITELIST;
     address public immutable SWAP_FACILITY;
-    address public immutable TREASURY;
     address public immutable EMERGENCY_HANDLER;
     address public immutable LENDER_RETURN_BPS_FEED;
     uint256 public immutable LEVERAGE_BPS;
@@ -50,8 +49,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     uint256 public immutable POST_HOLD_SWAP_TIMEOUT_END;
     uint256 public immutable POOL_PHASE_END;
     uint256 public immutable POOL_PHASE_DURATION;
-    uint256 public immutable LENDER_RETURN_FEE;
-    uint256 public immutable BORROWER_RETURN_FEE;
 
     // =================== Storage ===================
 
@@ -88,7 +85,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         address billToken,
         IWhitelist whitelist,
         address swapFacility,
-        address treasury,
         address lenderReturnBpsFeed,
         address emergencyHandler,
         uint256 leverageBps,
@@ -96,8 +92,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         uint256 commitPhaseDuration,
         uint256 swapTimeout,
         uint256 poolPhaseDuration,
-        uint256 lenderReturnFee,
-        uint256 borrowerReturnFee,
         string memory name,
         string memory symbol
     ) ERC20(name, symbol, ERC20(underlyingToken).decimals()) {
@@ -105,7 +99,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         BILL_TOKEN = billToken;
         WHITELIST = whitelist;
         SWAP_FACILITY = swapFacility;
-        TREASURY = treasury;
         LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
         EMERGENCY_HANDLER = emergencyHandler;
         LEVERAGE_BPS = leverageBps;
@@ -115,8 +108,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         POOL_PHASE_END = block.timestamp + commitPhaseDuration + poolPhaseDuration;
         POOL_PHASE_DURATION = poolPhaseDuration;
         POST_HOLD_SWAP_TIMEOUT_END = block.timestamp + commitPhaseDuration + poolPhaseDuration + (swapTimeout * 2 );
-        LENDER_RETURN_FEE = lenderReturnFee;
-        BORROWER_RETURN_FEE = borrowerReturnFee;
     }
 
     // =============== Deposit Methods ===============
@@ -225,16 +216,13 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             uint256 lenderReturn = _calculateLenderReturn(totalMatched, outAmount);
 
             uint256 borrowerReturn = outAmount - lenderReturn;
-            uint256 lenderReturnFee = (lenderReturn - totalMatched) * LENDER_RETURN_FEE / BPS;
-            uint256 borrowerReturnFee = borrowerReturn * BORROWER_RETURN_FEE / BPS;
 
-            borrowerDistribution = (borrowerReturn - borrowerReturnFee).toUint128();
+
+            borrowerDistribution = borrowerReturn.toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();
 
-            lenderDistribution = (lenderReturn - lenderReturnFee).toUint128();
+            lenderDistribution = lenderReturn.toUint128();
             totalLenderShares = uint256(totalMatched).toUint128();
-
-            UNDERLYING_TOKEN.safeTransfer(TREASURY, lenderReturnFee + borrowerReturnFee);
 
             emit ExplictStateTransition(State.PendingPostHoldSwap, setState = State.FinalWithdraw);
             return;

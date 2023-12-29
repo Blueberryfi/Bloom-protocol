@@ -75,7 +75,6 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
             billToken,
             IWhitelist(poolParams.borrowerWhiteList),
             address(swapFacility),
-            poolParams.treasury,
             poolParams.lenderReturnBpsFeed,
             poolParams.emergencyHandler,
             poolParams.leverageBps,
@@ -83,8 +82,6 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
             poolParams.commitPhaseDuration,
             poolParams.swapTimeout,
             poolParams.poolPhaseDuration,
-            poolParams.lenderReturnFee,
-            poolParams.borrowerReturnFee,
             name,
             symbol
         );

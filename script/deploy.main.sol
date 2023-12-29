@@ -32,7 +32,7 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x21c2bd51f230D69787DAf230672F70bAA1826F67;
     address internal constant MULTISIG = 0x91797a79fEA044D165B00D236488A0f2D22157BC;
-    address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
+    // address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
     // Replace with real address if we arent deploying a new factory or registry
     address internal constant BLOOM_FACTORY_ADDRESS = address(0);
     address internal constant EXCHANGE_RATE_REGISTRY = address(0);
@@ -94,7 +94,6 @@ contract Deploy is Test, Script {
         );
 
         IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
-            TREASURY,
             address(WHITELIST_BORROW),
             address(LENDER_RETURN_BPS_FEED),
             address(emergencyHandlerProxy),
@@ -102,9 +101,7 @@ contract Deploy is Test, Script {
             10.0e6,
             commitPhaseDuration,
             swapTimeout,
-            poolPhaseDuration,
-            0, // 0%
-            0 // 0%
+            poolPhaseDuration
         );
 
         IBloomFactory.SwapFacilityParams memory swapFacilityParams = IBloomFactory.SwapFacilityParams(

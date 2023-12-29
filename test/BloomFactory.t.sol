@@ -47,7 +47,6 @@ contract BloomFactoryTest is Test {
         billOracle = new MockOracle(8);
 
         poolParams = IBloomFactory.PoolParams({
-            treasury: address(1), // Set to address(1) b/c irrelevant for tests
             borrowerWhiteList: address(2),  // Set to address(2) b/c irrelevant for tests
             lenderReturnBpsFeed: address(3), // Set to address(3) b/c irrelevant for tests
             emergencyHandler: address(4), // Set to address(4) b/c irrelevant for tests
@@ -55,9 +54,7 @@ contract BloomFactoryTest is Test {
             minBorrowDeposit: 100e18,
             commitPhaseDuration: 3 days,
             swapTimeout: 7 days,
-            poolPhaseDuration: 180 days,
-            lenderReturnFee: 1000,
-            borrowerReturnFee: 300
+            poolPhaseDuration: 180 days
         });
 
         swapFacilityParams = IBloomFactory.SwapFacilityParams({

@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 import {BloomPool} from "../BloomPool.sol";
 
@@ -19,7 +19,6 @@ interface IBloomFactory {
     error InvalidPoolAddress();
 
     struct PoolParams {
-        address treasury;
         address borrowerWhiteList;
         address lenderReturnBpsFeed;
         address emergencyHandler;
@@ -28,8 +27,6 @@ interface IBloomFactory {
         uint256 commitPhaseDuration;
         uint256 swapTimeout;
         uint256 poolPhaseDuration;
-        uint256 lenderReturnFee;
-        uint256 borrowerReturnFee;
     }
 
     struct SwapFacilityParams {
