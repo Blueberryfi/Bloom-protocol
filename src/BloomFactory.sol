@@ -20,11 +20,14 @@ import {SwapFacility} from "./SwapFacility.sol";
 import {IBloomFactory} from "./interfaces/IBloomFactory.sol";
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {IRegistry} from "./interfaces/IRegistry.sol";
+import {IStUSD} from "./interfaces/IStUSD.sol";
 
 contract BloomFactory is IBloomFactory, Ownable2Step {
     // =================== Storage ===================   
     address private _lastCreatedPool;
     mapping(address => bool) private _isPoolFromFactory;
+    
+    address private _stUSD;
 
     constructor(address owner) Ownable2Step() {
         _transferOwnership(owner);
@@ -34,6 +37,10 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         return _lastCreatedPool;
     }
 
+    function getStUSD() external view returns (address) {
+        return _stUSD;
+    }
+
     function isPoolFromFactory(address pool)
         external
         view
@@ -41,6 +48,11 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         returns (bool) 
     {
         return _isPoolFromFactory[pool];
+    }
+
+    function setStUSD(address stUSD) external onlyOwner {
+        _stUSD = stUSD;
+        emit NewStUSD(_stUSD);
     }
 
     function create(
@@ -53,6 +65,11 @@ contract BloomFactory is IBloomFactory, Ownable2Step {
         SwapFacilityParams calldata swapFacilityParams,
         uint256 factoryNonce
     ) external override onlyOwner returns (BloomPool) {
+        // Poke StUSD prior to deploying a new BloomPool to ensure that there is no double account
+        if (_stUSD != address(0)) {
+            IStUSD(_stUSD).poke();
+        }
+
         // Precompute the address of the BloomPool
         address expectedPoolAddress = LibRLP.computeAddress(address(this), factoryNonce + 1);
         
