@@ -217,7 +217,6 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
 
             uint256 borrowerReturn = outAmount - lenderReturn;
 
-
             borrowerDistribution = borrowerReturn.toUint128();
             totalBorrowerShares = uint256(totalMatched * BPS / LEVERAGE_BPS).toUint128();
 
