@@ -34,7 +34,6 @@ contract ExchangeRateRegistryTest is Test {
     MockOracle internal oracle1;
     MockOracle internal oracle2;
 
-    address internal treasury = makeAddr("treasury");
     address internal registryOwner = makeAddr("owner");
     address internal factory = makeAddr("factory");
 
@@ -43,7 +42,6 @@ contract ExchangeRateRegistryTest is Test {
 
     uint256 internal constant ORACLE_RATE = 1.5e4;
     uint256 internal constant BPS = 1e4;
-    uint256 internal constant LENDER_RETURN_FEE = 1000;
     uint256 internal constant SCALER = 1e14;
     uint256 internal constant COMMIT_PHASE = 3 days;
     uint256 internal constant POOL_DURATION = 360 days;
@@ -72,7 +70,6 @@ contract ExchangeRateRegistryTest is Test {
             billToken: address(billyToken),
             whitelist: IWhitelist(address(whitelist)),
             swapFacility: address(swap),
-            treasury: treasury,
             leverageBps: 4 * BPS,
             emergencyHandler: address(0),
             minBorrowDeposit: 100e18,
@@ -80,8 +77,6 @@ contract ExchangeRateRegistryTest is Test {
             swapTimeout: 7 days,
             poolPhaseDuration: POOL_DURATION,
             lenderReturnBpsFeed: address(feed),
-            lenderReturnFee: LENDER_RETURN_FEE,
-            borrowerReturnFee: 3000,
             name: "Term Bound Token 6 month 2023-06-1",
             symbol: "TBT-1"
         });
@@ -107,7 +102,7 @@ contract ExchangeRateRegistryTest is Test {
             skip(timePerInterval);
             
             uint256 valueAccrued = (((ORACLE_RATE - 1e4) * SCALER) / testingIntervals) * i;
-            uint256 lenderShare = valueAccrued * (LENDER_RETURN_FEE * SCALER) / 1e18;
+            uint256 lenderShare = valueAccrued / 1e18;
             uint256 expectedRate = STARTING_EXCHANGE_RATE + valueAccrued - lenderShare;
 
             assertEq(registry.getExchangeRate(address(pool)), expectedRate);

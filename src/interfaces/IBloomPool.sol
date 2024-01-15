@@ -122,7 +122,6 @@ interface IBloomPool {
     function BILL_TOKEN() external view returns (address);
     function WHITELIST() external view returns (IWhitelist);
     function SWAP_FACILITY() external view returns (address);
-    function TREASURY() external view returns (address);
     function LENDER_RETURN_BPS_FEED() external view returns (address);
     function LEVERAGE_BPS() external view returns (uint256);
     function MIN_BORROW_DEPOSIT() external view returns (uint256);
@@ -131,8 +130,6 @@ interface IBloomPool {
     function POST_HOLD_SWAP_TIMEOUT_END() external view returns (uint256);
     function POOL_PHASE_END() external view returns (uint256);
     function POOL_PHASE_DURATION() external view returns (uint256);
-    function LENDER_RETURN_FEE() external view returns (uint256);
-    function BORROWER_RETURN_FEE() external view returns (uint256);
 
     function state() external view returns (State currentState);
     function totalMatchAmount() external view returns (uint256);

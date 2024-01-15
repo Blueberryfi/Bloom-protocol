@@ -210,9 +210,8 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
         if (timeElapsed > duration) {
             timeElapsed = duration;
         }
-        uint256 adjustedLenderFee = pool.LENDER_RETURN_FEE() * SCALER;
         
-        uint256 delta = ((rate * (BASE_RATE - adjustedLenderFee)) * timeElapsed) / 
+        uint256 delta = (rate * BASE_RATE * timeElapsed) / 
             ONE_YEAR / 1e18;
 
         return BASE_RATE + delta;

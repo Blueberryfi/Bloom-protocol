@@ -38,7 +38,6 @@ contract BloomPoolTest is Test {
     MockOracle internal billOracle;
     MockBPSFeed internal feed;
 
-    address internal treasury = makeAddr("treasury");
     address internal multisig = makeAddr("multisig");
     address internal factory = makeAddr("factory");
     
@@ -84,7 +83,6 @@ contract BloomPoolTest is Test {
             billToken: address(billyToken),
             whitelist: IWhitelist(address(whitelist)),
             swapFacility: address(swap),
-            treasury: treasury,
             leverageBps: 4 * BPS,
             emergencyHandler: address(emergencyHandler),
             minBorrowDeposit: 100.0e6,
@@ -92,8 +90,6 @@ contract BloomPoolTest is Test {
             swapTimeout: 7 days,
             poolPhaseDuration: poolPhaseDuration = 180 days,
             lenderReturnBpsFeed: address(feed),
-            lenderReturnFee: 0,
-            borrowerReturnFee: 0,
             name: "Term Bound Token 6 month 2023-06-1",
             symbol: "TBT-1"
         });
@@ -413,17 +409,11 @@ contract BloomPoolTest is Test {
             lenderReceived = (totalMatchAmount + yield);
             borrowerReceived = totalAmount - lenderReceived;
 
-            uint256 lenderFee = (lenderReceived - totalMatchAmount) * pool.LENDER_RETURN_FEE() / BPS;
-            uint256 borrowerFee = borrowerReceived * pool.BORROWER_RETURN_FEE() / BPS;
-
-            lenderReceived -= lenderFee;
-            borrowerReceived -= borrowerFee;
             totalAmount = lenderReceived + borrowerReceived;
 
             assertEq(lenderDist, lenderReceived);
             assertEq(borrowerDist, borrowerReceived);
 
-            assertEq(stableToken.balanceOf(treasury), lenderFee + borrowerFee);
         }
 
         // Lender Withdraw
