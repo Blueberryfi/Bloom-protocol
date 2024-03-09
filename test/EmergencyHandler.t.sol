@@ -13,6 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 
 import {FixedPointMathLib as Math} from "solady/utils/FixedPointMathLib.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {MockERC20, ERC20} from "./mock/MockERC20.sol";
 import {MockBloomPool} from "./mock/MockBloomPool.sol";
@@ -66,8 +67,14 @@ contract EmergencyHandlerTest is Test {
 
         vm.startPrank(multisig);
         registry.registerToken(IBloomPool(address(pool)));
-        handler = new EmergencyHandler(registry);
+        
         vm.stopPrank();
+
+        EmergencyHandler emergencyHandlerInstance = new EmergencyHandler();
+
+        address handlerProxy = address(new TransparentUpgradeableProxy(address(emergencyHandlerInstance), multisig, ""));
+        handler = EmergencyHandler(handlerProxy);
+        handler.initialize(registry, multisig);
     }
 
     function test_getRegistry() public {

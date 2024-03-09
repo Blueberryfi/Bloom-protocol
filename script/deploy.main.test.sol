@@ -13,7 +13,7 @@ pragma solidity 0.8.19;
 import {Test} from "forge-std/Test.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
-import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
@@ -164,7 +164,8 @@ contract Deploy is Test, Script {
             console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
             return BloomFactory(BLOOM_FACTORY_ADDRESS);
         } else {
-            address factoryAddr = address(new BloomFactory{salt: salt}(DEPLOYER));
+            address factoryAddr = address(new BloomFactory{salt: salt}());
+            BloomFactory(factoryAddr).initialize(MULTISIG);
             vm.label(factoryAddr, "BloomFactory");
             console2.log("BloomFactory deployed at:", factoryAddr);
             return BloomFactory(factoryAddr);
@@ -187,7 +188,8 @@ contract Deploy is Test, Script {
 
     function _deployEmergencyHandler(ExchangeRateRegistry exchangeRateRegistry) internal returns (EmergencyHandler) {
         if (DEPLOY_EMERGENCY_HANDLER) {
-            EmergencyHandler emergencyHandler = new EmergencyHandler(exchangeRateRegistry);
+            EmergencyHandler emergencyHandler = new EmergencyHandler();
+            emergencyHandler.initialize(exchangeRateRegistry, MULTISIG);
             vm.label(address(emergencyHandler), "EmergencyHandler");
             console2.log("EmergencyHandler deployed at: ", address(emergencyHandler));
             return emergencyHandler;

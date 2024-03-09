@@ -11,11 +11,10 @@
 pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+
 import {MockERC20} from "./mock/MockERC20.sol";
 import {MockOracle} from "./mock/MockOracle.sol";
-
-import {Ownable} from "openzeppelin/access/Ownable.sol";
-import {LibRLP} from "solady/utils/LibRLP.sol";
 
 import {BloomFactory, BloomPool, IWhitelist, IBloomFactory} from "src/BloomFactory.sol";
 import {ExchangeRateRegistry} from "src/helpers/ExchangeRateRegistry.sol";
@@ -37,7 +36,11 @@ contract BloomFactoryTest is Test {
     function setUp() public {
         address multisig = makeAddr("multisig");
 
-        factory = new BloomFactory(address(this));
+        BloomFactory factoryInstance = new BloomFactory();
+        address factoryProxy = address(new TransparentUpgradeableProxy(address(factoryInstance), multisig, ""));
+        factory = BloomFactory(factoryProxy);
+        factory.initialize(address(this));
+
         registry = new ExchangeRateRegistry(multisig, address(factory));
 
         underlyingToken = new MockERC20(8);

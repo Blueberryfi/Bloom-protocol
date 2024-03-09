@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 
 import {AssetCommitment} from "./lib/CommitmentsLib.sol";
 import {ExchangeRateRegistry} from "./helpers/ExchangeRateRegistry.sol";
@@ -26,11 +26,11 @@ import {ISwapFacility} from "./interfaces/ISwapFacility.sol";
  * @notice Allows users to redeem their funds from a Bloom Pool in emergency mode
  * @dev This contract must correspond to a specific ExchangeRateRegistry
  */
-contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
+contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
     using SafeTransferLib for address;
     // =================== Storage ===================
 
-    ExchangeRateRegistry public immutable REGISTRY;
+    ExchangeRateRegistry public REGISTRY;
     mapping(address => RedemptionInfo) public redemptionInfo;
     mapping(address => mapping(uint256 => ClaimStatus)) public borrowerClaimStatus;
 
@@ -49,8 +49,21 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2Step {
         _;
     }
 
-    constructor(ExchangeRateRegistry _registry) Ownable2Step() {
-        REGISTRY = _registry;
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
+     * 
+     * @param registry ExchangeRateRegistry
+     * @param owner Address of the owner of the contract
+     */
+    function initialize(ExchangeRateRegistry registry, address owner) external initializer {
+        __Ownable2Step_init();
+        _transferOwnership(owner);
+
+        REGISTRY = registry;
     }
 
     /**
