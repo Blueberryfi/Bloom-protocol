@@ -11,8 +11,7 @@
 pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
-
-import {FixedPointMathLib as Math} from "solady/utils/FixedPointMathLib.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {BloomPool, State, AssetCommitment} from "src/BloomPool.sol";
 import {IBloomPool} from "src/interfaces/IBloomPool.sol";
@@ -42,7 +41,7 @@ contract BloomPoolTest is Test {
     address internal factory = makeAddr("factory");
     
     ExchangeRateRegistry internal registry = new ExchangeRateRegistry(multisig, factory);
-    EmergencyHandler internal emergencyHandler = new EmergencyHandler(registry);
+    EmergencyHandler internal emergencyHandler;
 
     uint256 internal commitPhaseDuration;
     uint256 internal poolPhaseDuration;
@@ -77,6 +76,11 @@ contract BloomPoolTest is Test {
         feed = new MockBPSFeed();
 
         feed.setRate(BPS_FEED_VALUE);
+        EmergencyHandler emergencyHandlerInstance = new EmergencyHandler();
+
+        address handlerProxy = address(new TransparentUpgradeableProxy(address(emergencyHandlerInstance), multisig, ""));
+        emergencyHandler = EmergencyHandler(handlerProxy);
+        emergencyHandler.initialize(registry, multisig);
 
         pool = new BloomPool({
             underlyingToken: address(stableToken),

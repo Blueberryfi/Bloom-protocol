@@ -10,7 +10,6 @@
 
 pragma solidity 0.8.19;
 
-import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 
@@ -24,10 +23,9 @@ import {IStUSD} from "./interfaces/IStUSD.sol";
 
 contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
     // =================== Storage ===================   
-    address private _lastCreatedPool;
-    mapping(address => bool) private _isPoolFromFactory;
-    
+    address private _lastCreatedPool;    
     address private _stUSD;
+    mapping(address => bool) private _isPoolFromFactory;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

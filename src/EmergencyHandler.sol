@@ -30,7 +30,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
     using SafeTransferLib for address;
     // =================== Storage ===================
 
-    ExchangeRateRegistry public immutable REGISTRY;
+    ExchangeRateRegistry public REGISTRY;
     mapping(address => RedemptionInfo) public redemptionInfo;
     mapping(address => mapping(uint256 => ClaimStatus)) public borrowerClaimStatus;
 
