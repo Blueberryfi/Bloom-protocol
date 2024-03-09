@@ -37,7 +37,9 @@ contract BloomFactoryTest is Test {
     function setUp() public {
         address multisig = makeAddr("multisig");
 
-        factory = new BloomFactory(address(this));
+        factory = new BloomFactory();
+        factory.initialize(multisig);
+
         registry = new ExchangeRateRegistry(multisig, address(factory));
 
         underlyingToken = new MockERC20(8);

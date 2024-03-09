@@ -66,7 +66,9 @@ contract EmergencyHandlerTest is Test {
 
         vm.startPrank(multisig);
         registry.registerToken(IBloomPool(address(pool)));
-        handler = new EmergencyHandler(registry);
+        handler = new EmergencyHandler();
+        handler.initialize(registry, multisig);
+        
         vm.stopPrank();
     }
 

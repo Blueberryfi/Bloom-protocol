@@ -11,7 +11,7 @@
 pragma solidity 0.8.19;
 
 import {EnumerableSet} from "openzeppelin/utils/structs/EnumerableSet.sol";
-import {Ownable2Step} from "openzeppelin/access/Ownable2Step.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 
 import {BloomPool} from "./BloomPool.sol";
@@ -22,14 +22,20 @@ import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {IRegistry} from "./interfaces/IRegistry.sol";
 import {IStUSD} from "./interfaces/IStUSD.sol";
 
-contract BloomFactory is IBloomFactory, Ownable2Step {
+contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
     // =================== Storage ===================   
     address private _lastCreatedPool;
     mapping(address => bool) private _isPoolFromFactory;
     
     address private _stUSD;
 
-    constructor(address owner) Ownable2Step() {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address owner) external initializer {
+        __Ownable2Step_init();
         _transferOwnership(owner);
     }
 
