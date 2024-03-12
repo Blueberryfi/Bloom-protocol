@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";

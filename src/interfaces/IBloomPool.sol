@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {AssetCommitment} from "../lib/CommitmentsLib.sol";
 import {IWhitelist} from "../interfaces/IWhitelist.sol";

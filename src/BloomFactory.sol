@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
@@ -33,7 +33,7 @@ contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
     }
 
     function initialize(address owner) external initializer {
-        __Ownable2Step_init();
+       // __Ownable2Step_init();
         _transferOwnership(owner);
     }
 

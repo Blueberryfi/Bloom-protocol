@@ -4,3 +4,4 @@ solmate/=lib/solmate/src/
 solady/=lib/solady/src/
 openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 openzeppelin/=lib/openzeppelin-contracts/contracts/
+openzeppelin-foundry-upgrades/=lib/openzeppelin-foundry-upgrades/

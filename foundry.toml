@@ -13,6 +13,7 @@ runs = 10000
 remappings = [
     "openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/",
     "openzeppelin/=openzeppelin/contracts/",
+    "openzeppelin-foundry-upgrades/=lib/openzeppelin-foundry-upgrades/",
 ]
 
 [rpc_endpoints]
@@ -20,5 +21,5 @@ goerli = "${GOERLI_RPC_URL}"
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
-goerli = { key = "${ETHERSCAN_API_KEY}"}
-sepolia = { key = "${ETHERSCAN_API_KEY}"}
+goerli = { key = "${ETHERSCAN_API_KEY}" }
+sepolia = { key = "${ETHERSCAN_API_KEY}" }

@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Owned} from "solmate/auth/Owned.sol";
 import {IBPSFeed} from "./interfaces/IBPSFeed.sol";

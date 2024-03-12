@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "../interfaces/IRateProvider.sol";
 import {IRegistry} from "../interfaces/IRegistry.sol";
