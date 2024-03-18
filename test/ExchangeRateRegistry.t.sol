@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -57,8 +57,8 @@ contract ExchangeRateRegistryTest is Test {
     }
 
     function setUp() public {
-        stableToken = new MockERC20(6);
-        billyToken = new MockERC20(18);
+        stableToken = new MockERC20("USDC", "USDC", 6);
+        billyToken = new MockERC20("ib01", "ib01", 18);
         whitelist = new MockWhitelist();
         swap = new MockSwapFacility(stableToken, billyToken, oracle1, oracle2);
         feed = new MockBPSFeed();

@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -65,9 +65,9 @@ contract BloomPoolTest is Test {
     event EmergencyWithdrawExecuted(address indexed from, address indexed to, uint256 amount);
 
     function setUp() public {
-        stableToken = new MockERC20(6);
+        stableToken = new MockERC20("USDC", "USDC", 6);
         vm.label(address(stableToken), "StableToken");
-        billyToken = new MockERC20(18);
+        billyToken = new MockERC20("ib01", "ib01", 18);
         vm.label(address(billyToken), "BillyToken");
         whitelist = new MockWhitelist();
         stableOracle = new MockOracle(8);

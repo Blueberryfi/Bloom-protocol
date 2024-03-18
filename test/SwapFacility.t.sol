@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
@@ -47,11 +47,11 @@ contract SwapFacilityTest is Test {
     event Swap(address inToken, address outToken, uint256 inAmount, uint256 outAmount, address indexed user);
 
     function setUp() public {
-        stableToken = new MockERC20(6);
+        stableToken = new MockERC20("USDC", "USDC", 6);
         vm.label(address(stableToken), "StableToken");
-        billyToken = new MockERC20(18);
+        billyToken = new MockERC20("ib01", "ib01", 18);
         vm.label(address(billyToken), "BillyToken");
-        randomToken = new MockERC20(18);
+        randomToken = new MockERC20("Random token", "Random token", 18);
         vm.label(address(randomToken), "RandomToken");
         usdcOracle = new MockOracle(8);
         vm.label(address(usdcOracle), "StableTokenOracle");

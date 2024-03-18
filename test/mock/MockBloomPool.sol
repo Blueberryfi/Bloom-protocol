@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ISwapFacility} from "src/interfaces/ISwapFacility.sol";
@@ -54,7 +54,7 @@ contract MockBloomPool is MockERC20 {
     }
 
     constructor(address _underlyingToken, address _billToken, address _swap) 
-        MockERC20(MockERC20(_underlyingToken).decimals())
+        MockERC20("Bloom Pool", "TBY", MockERC20(_underlyingToken).decimals())
     {
         underlyingToken = _underlyingToken;
         billToken = _billToken;

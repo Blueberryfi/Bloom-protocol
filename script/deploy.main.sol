@@ -8,12 +8,13 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
@@ -85,54 +86,54 @@ contract Deploy is Test, Script {
         // Deploy protocol
         (BLOOM_FACTORY_PROXY_ADDRESS, BLOOM_FACTORY_IMPLEMENTATION) = _deployBloomFactory("BloomTBYs");
 
-        ExchangeRateRegistry exchangeRateRegistry = _deployExchangeRateRegistry(BLOOM_FACTORY_PROXY_ADDRESS);
+        // ExchangeRateRegistry exchangeRateRegistry = _deployExchangeRateRegistry(BLOOM_FACTORY_PROXY_ADDRESS);
 
-        // Deploy emergency handler logic
-        EmergencyHandler emergencyHandlerImplementation = _deployEmergencyHandler(exchangeRateRegistry);
+        // // Deploy emergency handler logic
+        // EmergencyHandler emergencyHandlerImplementation = _deployEmergencyHandler(exchangeRateRegistry);
 
-        // Deploy proxy for emergency handler
-        TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
-            address(emergencyHandlerImplementation),
-            MULTISIG,
-            ""
-        );
+        // // Deploy proxy for emergency handler
+        // TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
+        //     address(emergencyHandlerImplementation),
+        //     MULTISIG,
+        //     ""
+        // );
 
-        IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
-            address(WHITELIST_BORROW),
-            address(LENDER_RETURN_BPS_FEED),
-            address(emergencyHandlerProxy),
-            60e4,
-            10.0e6,
-            commitPhaseDuration,
-            swapTimeout,
-            poolPhaseDuration
-        );
+        // IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
+        //     address(WHITELIST_BORROW),
+        //     address(LENDER_RETURN_BPS_FEED),
+        //     address(emergencyHandlerProxy),
+        //     60e4,
+        //     10.0e6,
+        //     commitPhaseDuration,
+        //     swapTimeout,
+        //     poolPhaseDuration
+        // );
 
-        IBloomFactory.SwapFacilityParams memory swapFacilityParams = IBloomFactory.SwapFacilityParams(
-            USDCUSD,
-            IB01USD,
-            address(WHITELIST_SWAP),
-            SPREAD,
-            MIN_STABLE_VALUE,
-            MAX_BILL_VALUE
-        );
+        // IBloomFactory.SwapFacilityParams memory swapFacilityParams = IBloomFactory.SwapFacilityParams(
+        //     USDCUSD,
+        //     IB01USD,
+        //     address(WHITELIST_SWAP),
+        //     SPREAD,
+        //     MIN_STABLE_VALUE,
+        //     MAX_BILL_VALUE
+        // );
 
-        pool = IBloomFactory(BLOOM_FACTORY_PROXY_ADDRESS).create(
-            "Term Bound Yield 6 month apr-2024-BatchA",
-            "TBY-apr24(a)",
-            UNDERLYING_TOKEN,
-            BILL_TOKEN,
-            exchangeRateRegistry,
-            poolParams,
-            swapFacilityParams,
-            vm.getNonce(address(BLOOM_FACTORY_PROXY_ADDRESS))
-        );
-        vm.label(address(pool), "BloomPool");
-        console2.log("BloomPool deployed at:", address(pool));
+        // pool = IBloomFactory(BLOOM_FACTORY_PROXY_ADDRESS).create(
+        //     "Term Bound Yield 6 month apr-2024-BatchA",
+        //     "TBY-apr24(a)",
+        //     UNDERLYING_TOKEN,
+        //     BILL_TOKEN,
+        //     exchangeRateRegistry,
+        //     poolParams,
+        //     swapFacilityParams,
+        //     vm.getNonce(address(BLOOM_FACTORY_PROXY_ADDRESS))
+        // );
+        // vm.label(address(pool), "BloomPool");
+        // console2.log("BloomPool deployed at:", address(pool));
 
-        swap = SwapFacility(pool.SWAP_FACILITY());
-        vm.label(address(swap), "SwapFacility");
-        console2.log("SwapFacility deployed at:", address(swap));
+        // swap = SwapFacility(pool.SWAP_FACILITY());
+        // vm.label(address(swap), "SwapFacility");
+        // console2.log("SwapFacility deployed at:", address(swap));
 
         vm.stopBroadcast();
     }
@@ -164,37 +165,16 @@ contract Deploy is Test, Script {
     */
 
     function _deployBloomFactory(bytes32 salt) internal returns (address, address) {
-        address factoryImplementation = BLOOM_FACTORY_IMPLEMENTATION;
-        address factoryProxy = BLOOM_FACTORY_PROXY_ADDRESS;
+        //ProxyAdmin admin = new ProxyAdmin();
+        BloomFactory factoryImplementation = new BloomFactory();
 
-        if (factoryImplementation == address(0) || DEPLOY_FACTORY) {
-            factoryImplementation = address(new BloomFactory());
-            BloomFactory(factoryImplementation).initialize(DEPLOYER);
-            vm.label(factoryImplementation, "BloomFactory");
-            console2.log("BloomFactory deployed at:", factoryImplementation);
-        }
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(factoryImplementation),
+            address(DEPLOYER),
+            abi.encodeWithSignature("initialize(address)", DEPLOYER)
+        );
 
-        if (!DEPLOY_FACTORY) {
-            console2.log("Factory previously deployed at: ", factoryImplementation);
-        }
-        
-        if (!DEPLOY_FACTORY_PROXY || factoryProxy != address(0)) {
-            console2.log("Factory Proxy previously deployed at: ", factoryProxy);
-        } else {
-            factoryProxy = address(new TransparentUpgradeableProxy{salt: salt}(
-                address(factoryImplementation),
-                MULTISIG,
-                ""
-            ));
-            vm.label(factoryProxy, "BloomFactoryProxy");
-            console2.log("BloomFactory Proxy deployed at:", factoryProxy);
-        }
-
-        if (UPDATE_FACTORY) {
-            ITransparentUpgradeableProxy(payable(factoryProxy)).upgradeTo(factoryImplementation);
-        }
-
-        return (factoryProxy, factoryImplementation);
+        return (address(proxy), address(factoryImplementation));
     }
 
     // function _deploySwapFacility() internal {

@@ -8,12 +8,13 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 import {Script, console2} from "forge-std/Script.sol";
 import {LibRLP} from "solady/utils/LibRLP.sol";
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {MerkleWhitelist} from "../src/MerkleWhitelist.sol";
 import {BPSFeed} from "../src/BPSFeed.sol";
@@ -24,6 +25,8 @@ import {TBYRateProviderFactory} from "../src/helpers/TBYRateProviderFactory.sol"
 import {BloomFactory, IBloomFactory} from "../src/BloomFactory.sol";
 import {EmergencyHandler} from "../src/EmergencyHandler.sol";
 
+import {MockERC20} from "../test/mock/MockERC20.sol";
+
 import {ISwapFacility} from "../src/interfaces/ISwapFacility.sol";
 import {IWhitelist} from "../src/interfaces/IWhitelist.sol";
 import {IRegistry} from "../src/interfaces/IRegistry.sol";
@@ -31,17 +34,13 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 
 contract Deploy is Test, Script {
     address internal constant DEPLOYER = 0x263c0a1ff85604f0ee3f4160cAa445d0bad28dF7;
-    // address internal constant TREASURY = 0xE4D701c6E3bFbA3e50D1045A3cef4797b6165119;
+    address internal constant MULTISIG = 0x100FE48127438776484fa988598600B174C8b1Bf;
+    // address internal constant TREASURY = 0xFdC004B6B92b45B224d37dc45dBA5cA82c1e08f2;
     // Replace with real address if we arent deploying a new factory or registry
-    address internal constant BLOOM_FACTORY_ADDRESS = address(0);
-    address internal constant EXCHANGE_RATE_REGISTRY = address(0);
-    address internal constant EMERGENCY_HANDLER = address(0);
-
-    address internal constant UNDERLYING_TOKEN = 0xa1c511b3C5Be3C94089203845D6247D1696D7Fb9; //
-    address internal constant BILL_TOKEN = 0x106c5522A76818cEdf06E885E8a8A63eb6Cf2a4b;
-    //bIB01
-    // MockERC20 internal UNDERLYING_TOKEN;
-    // MockERC20 internal BILL_TOKEN;
+    address internal BLOOM_FACTORY_IMPLEMENTATION = address(0);
+    address internal BLOOM_FACTORY_PROXY_ADDRESS = address(0);
+    address internal EXCHANGE_RATE_REGISTRY = address(0);
+    address internal EMERGENCY_HANDLER = address(0);
 
     IWhitelist internal constant WHITELIST = IWhitelist(0x461796731316D6987F77f50c249bF3c272668F13);
     address internal constant BPSFEED = 0x4C46dfc9e4cCe661d6E24FE49C43adb004423541;
@@ -61,12 +60,15 @@ contract Deploy is Test, Script {
     uint256 internal constant commitPhaseDuration = 10 days;
     uint256 internal constant poolPhaseDuration = 2 days;
     uint256 internal constant swapTimeout = 1 days;
+
     // True if we want to deploy a factory. False if we want to use an existing one
     bool internal constant DEPLOY_FACTORY = true;
     bool internal constant DEPLOY_EXCHANGE_RATE_REGISTRY = true;
     bool internal constant DEPLOY_EMERGENCY_HANDLER = true;
+    bool internal constant DEPLOY_FACTORY_PROXY = true;
+    bool internal constant UPDATE_FACTORY = false;
+    
     // Aux
-    // BPSFeed internal lenderReturnBpsFeed;
     // BPSFeed internal lenderReturnBpsFeed;
     // MerkleWhitelist internal whitelistBorrow;
     // MerkleWhitelist internal whitelistSwap;
@@ -76,32 +78,27 @@ contract Deploy is Test, Script {
     SwapFacility internal swap;
 
     function run() public {
-        vm.startBroadcast();
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy aux items
-        // _deployMerkleWhitelistBorrow();
-        // _deployMerkleWhitelistSwap();
-        // _deployBPSFeed();
+        address mockUsdc = address(new MockERC20("Bloom Mock USDC", "USDC", 6));
+        address mockIb01 = address(new MockERC20("Bloom Mock ib01", "ib01", 18));
+        console2.log('Mock USDC: ', mockUsdc);
+        console2.log('Mock IB01: ', mockIb01);
 
         // Deploy protocol
-        BloomFactory factory = _deployBloomFactoryWithCreate2("BlueberryBloom");
+        (BLOOM_FACTORY_PROXY_ADDRESS, BLOOM_FACTORY_IMPLEMENTATION) = _deployBloomFactory("BloomTBYs");
 
-        ExchangeRateRegistry exchangeRateRegistry = _deployExchangeRateRegistry(address(factory));
+        ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, BLOOM_FACTORY_PROXY_ADDRESS);
+        console2.log("Registry deployed at: ", address(registry));
 
         // Deploy emergency handler logic
-        EmergencyHandler emergencyHandlerImplementation = _deployEmergencyHandler(exchangeRateRegistry);
-
-        // Deploy proxy for emergency handler
-        TransparentUpgradeableProxy emergencyHandlerProxy = new TransparentUpgradeableProxy(
-            address(emergencyHandlerImplementation),
-            DEPLOYER,
-            ""
-        );
-
+        address handlerProxy = _deployEmergencyHandler(registry);
+        console2.log("EmergencyHandler deployed at: ", handlerProxy);
         IBloomFactory.PoolParams memory poolParams = IBloomFactory.PoolParams(
             address(WHITELIST),
             address(BPSFEED),
-            address(emergencyHandlerProxy),
+            handlerProxy,
             50e4,
             10.0e6,
             commitPhaseDuration,
@@ -117,25 +114,23 @@ contract Deploy is Test, Script {
             MIN_STABLE_VALUE,
             MAX_BILL_VALUE
         );
-        pool = factory.create(
-            "Term Bound Yield 6 month apr-2024-BatchA",
-            "TBY-apr24(a)",
-            UNDERLYING_TOKEN,
-            BILL_TOKEN,
-            exchangeRateRegistry,
+
+        pool = BloomFactory(BLOOM_FACTORY_PROXY_ADDRESS).create(
+            "Test Bloom Pool 1",
+            "TBY-1",
+            mockUsdc,
+            mockIb01,
+            registry,
             poolParams,
             swapFacilityParams,
-            vm.getNonce(address(factory))
+            vm.getNonce(BLOOM_FACTORY_PROXY_ADDRESS)
         );
-        vm.label(address(pool), "BloomPool");
-        console2.log("BloomPool deployed at:", address(pool));
+        console2.log('TBY-1: ', address(pool));
+        // swap = SwapFacility(pool.SWAP_FACILITY());
+        // vm.label(address(swap), "SwapFacility");
+        // console2.log("SwapFacility deployed at:", address(swap));
 
-        swap = SwapFacility(pool.SWAP_FACILITY());
-        vm.label(address(swap), "SwapFacility");
-        console2.log("SwapFacility deployed at:", address(swap));
-
-        factory.transferOwnership(DEPLOYER);
-        vm.stopBroadcast();
+        //vm.stopBroadcast();
     }
 
     /* 
@@ -164,18 +159,19 @@ contract Deploy is Test, Script {
     }
     */
 
+    function _deployBloomFactory(bytes32 salt) internal returns (address, address) {
+        BloomFactory factoryImplementation = new BloomFactory();
+        console2.log("Factory implementation deployed at: ", address(factoryImplementation));
 
-    function _deployBloomFactoryWithCreate2(bytes32 salt) internal returns (BloomFactory) {
-        if (!DEPLOY_FACTORY) {
-            console2.log("Factory previously deployed at: ", BLOOM_FACTORY_ADDRESS);
-            return BloomFactory(BLOOM_FACTORY_ADDRESS);
-        } else {
-            address factoryAddr = address(new BloomFactory{salt: salt}());
-            BloomFactory(factoryAddr).initialize(DEPLOYER);
-            vm.label(factoryAddr, "BloomFactory");
-            console2.log("BloomFactory deployed at:", factoryAddr);
-            return BloomFactory(factoryAddr);
-        }
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(factoryImplementation),
+            address(MULTISIG),
+            abi.encodeCall(BloomFactory.initialize, (
+                DEPLOYER
+            ))
+        );
+        console2.log("Factory proxy deployed at: ", address(proxy));
+        return (address(proxy), address(factoryImplementation));
     }
 
     // function _deploySwapFacility() internal {
@@ -186,7 +182,7 @@ contract Deploy is Test, Script {
     //         BILL_TOKEN,
     //         USDCUSD,
     //         IB01USD,
-    //         IWhitelist(address(WHITELIST)),
+    //         IWhitelist(address(WHITELIST_SWAP)),
     //         SPREAD,
     //         LibRLP.computeAddress(msg.sender, deployerNonce + 1),
     //         MIN_STABLE_VALUE,
@@ -196,53 +192,20 @@ contract Deploy is Test, Script {
     //     console2.log("SwapFacility deployed at:", address(swap));
     // }
 
-    // function _deployBloomPool() internal {
-    //     pool = new BloomPool(
-    //         UNDERLYING_TOKEN,
-    //         BILL_TOKEN,
-    //         IWhitelist(address(WHITELIST)),
-    //         address(swap),
-    //         TREASURY,
-    //         address(BPSFEED),
-    //         EMERGENCY_HANDLER,
-    //         50e4,
-    //         10.0e6,
-    //         commitPhaseDuration,
-    //         swapTimeout,
-    //         poolPhaseDuration,
-    //         300, // 3%
-    //         0, // 0%
-    //         "Term Bound Yield 6 month feb-2024-Batch2",
-    //         "TBY-feb-2024-Batch2"
-    //     );
-    //     console2.log("BloomPool deployed at:", address(pool));
-    // }
+    function _deployEmergencyHandler(ExchangeRateRegistry exchangeRateRegistry) internal returns (address) {
+        EmergencyHandler handlerImplementation = new EmergencyHandler();
+        console2.log("Factory implementation deployed at: ", address(handlerImplementation));
 
-    function _deployExchangeRateRegistry(address bloomFactory) internal returns (ExchangeRateRegistry) {
-        if (DEPLOY_EXCHANGE_RATE_REGISTRY) {
-            address factoryAddress = DEPLOY_FACTORY ? address(bloomFactory) : BLOOM_FACTORY_ADDRESS;
-
-            ExchangeRateRegistry registry = new ExchangeRateRegistry(DEPLOYER, factoryAddress);
-            vm.label(address(registry), "ExchangeRateRegistry");
-            console2.log("ExchangeRateRegistry deployed at: ", address(registry));
-            return registry;
-        } else {
-            console2.log("Registry previously deployed at: ", EXCHANGE_RATE_REGISTRY);
-            return ExchangeRateRegistry(EXCHANGE_RATE_REGISTRY);
-        }
-    }
-
-    function _deployEmergencyHandler(ExchangeRateRegistry exchangeRateRegistry) internal returns (EmergencyHandler) {
-        if (DEPLOY_EMERGENCY_HANDLER) {
-            EmergencyHandler emergencyHandler = new EmergencyHandler();
-            emergencyHandler.initialize(exchangeRateRegistry, DEPLOYER);
-            vm.label(address(emergencyHandler), "EmergencyHandler");
-            console2.log("EmergencyHandler deployed at: ", address(emergencyHandler));
-            return emergencyHandler;
-        } else {
-            console2.log("EmergencyHandler previously deployed at: ", EMERGENCY_HANDLER);
-            return EmergencyHandler(EMERGENCY_HANDLER);
-        }
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(handlerImplementation),
+            address(MULTISIG),
+            abi.encodeCall(EmergencyHandler.initialize, (
+                exchangeRateRegistry,
+                DEPLOYER
+            ))
+        );
+        console2.log("Factory proxy deployed at: ", address(proxy));
+        return (address(proxy));
     }
 
 }
