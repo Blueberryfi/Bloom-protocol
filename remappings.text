@@ -4,3 +4,5 @@ solmate/=lib/solmate/src/
 solady/=lib/solady/src/
 openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 openzeppelin/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/

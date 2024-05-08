@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -43,8 +43,8 @@ contract BloomFactoryTest is Test {
 
         registry = new ExchangeRateRegistry(multisig, address(factory));
 
-        underlyingToken = new MockERC20(8);
-        billToken = new MockERC20(18);
+        underlyingToken = new MockERC20("USDC", "USDC", 6);
+        billToken = new MockERC20("ib01", "ib01", 18);
 
         underlyingOracle = new MockOracle(8);
         billOracle = new MockOracle(8);

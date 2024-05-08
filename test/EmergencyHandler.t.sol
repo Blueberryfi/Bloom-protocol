@@ -8,7 +8,7 @@
 ╚═════╝░╚══════╝░╚════╝░░╚════╝░╚═╝░░░░░╚═╝
 */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -49,9 +49,9 @@ contract EmergencyHandlerTest is Test {
     uint256 internal constant LEVERAGE_BPS = 4e4;
 
     function setUp() public {
-        stableToken = new MockERC20(6);
+        stableToken = new MockERC20("USDC", "USDC", 6);
         vm.label(address(stableToken), "stableToken");
-        billyToken = new MockERC20(18);
+        billyToken = new MockERC20("ib01", "ib01", 18);
         vm.label(address(billyToken), "billyToken");
         stableOracle = new MockOracle(8);
         billyOracle = new MockOracle(8);
