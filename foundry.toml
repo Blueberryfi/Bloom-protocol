@@ -6,6 +6,7 @@ optimizer_runs = 100
 via_ir = true
 build_info = true
 extra_output = ["storageLayout"]
+evm_version = "paris"
 
 [fuzz]
 runs = 10000
