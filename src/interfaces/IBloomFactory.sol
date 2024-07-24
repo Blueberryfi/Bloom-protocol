@@ -38,7 +38,7 @@ interface IBloomFactory {
         uint256 maxBillyValue;
     }
 
-    event NewStUSD(address stUSD);
+    event StTBYSet(address stTBY);
     event NewBloomPoolCreated(address indexed pool, address swapFacility);
 
     /**
@@ -47,9 +47,9 @@ interface IBloomFactory {
     function getLastCreatedPool() external view returns (address);
 
     /**
-     * @notice Returns the address of the StUSD token
+     * @notice Returns the address of the StTBY token
      */
-    function getStUSD() external view returns (address);
+    function getStTBY() external view returns (address);
 
     /**
      * @notice Returns true if the pool was created from the factory
@@ -59,10 +59,10 @@ interface IBloomFactory {
     function isPoolFromFactory(address pool) external view returns (bool);
 
     /**
-     * @notice Sets the address of the StUSD token
-     * @param stUSD Address of the StUSD token
+     * @notice Sets the address of the StTBY token
+     * @param stTBY Address of the StTBY token
      */
-    function setStUSD(address stUSD) external;
+    function setStTBY(address stTBY) external;
 
     /**
      * @notice Create and initializes a new BloomPool and SwapFacility

@@ -40,6 +40,11 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     mapping(address => TokenInfo) public tokenInfos;
 
     /**
+     * @notice Mapping of token to emergency rate (in case of emergency)
+     */
+    mapping(address => uint256) public emergecyRates;
+
+    /**
      * @dev Group of active tokens
      */
     EnumerableSet.AddressSet internal _activeTokens;
@@ -48,11 +53,12 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
      * @dev Group of inactive tokens
      */
     EnumerableSet.AddressSet internal _inactiveTokens;
-    
+
     struct TokenInfo {
         bool registered;
         bool active;
-        uint256 createdAt;
+        bool emergency;
+        uint256 createdAt; // This timestamp is the end of the commit phase
     }
 
     /**
@@ -60,10 +66,7 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
      * @param token The token address to register
      * @param createdAt Timestamp of the token creation
      */
-    event TokenRegistered(
-        address indexed token,
-        uint256 createdAt
-    );
+    event TokenRegistered(address indexed token, uint256 createdAt);
 
     /**
      * @notice Emitted when token is activated
@@ -95,7 +98,6 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
         _transferOwnership(owner);
         _bloomFactory = bloomFactory;
     }
-
 
     /**
      * @inheritdoc IRegistry
@@ -166,6 +168,19 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
+     * @notice Set the emergency rate for the token
+     * @param rate The emergency rate
+     */
+    function setEmergencyRate(uint256 rate) external {
+        TokenInfo storage info = tokenInfos[msg.sender];
+        if (!info.registered) {
+            revert InvalidUser();
+        }
+        info.emergency = true;
+        emergecyRates[msg.sender] = rate;
+    }
+
+    /**
      * @notice Return list of active tokens
      */
     function getActiveTokens() external view returns (address[] memory) {
@@ -189,7 +204,7 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
     }
 
     /**
-     * @notice Returns the Bloom Factory address 
+     * @notice Returns the Bloom Factory address
      */
     function getBloomFactory() external view returns (address) {
         return _bloomFactory;
@@ -201,18 +216,26 @@ contract ExchangeRateRegistry is IRegistry, Ownable2Step {
             revert TokenNotRegistered();
         }
 
+        if (info.emergency) {
+            return emergecyRates[token];
+        }
+
         IBloomPool pool = IBloomPool(token);
         IBPSFeed bpsFeed = IBPSFeed(pool.LENDER_RETURN_BPS_FEED());
         uint256 duration = pool.POOL_PHASE_DURATION();
 
         uint256 rate = (bpsFeed.getWeightedRate() - INITIAL_FEED_RATE) * SCALER;
+
+        if (info.createdAt >= block.timestamp) {
+            return BASE_RATE;
+        }
+
         uint256 timeElapsed = block.timestamp - info.createdAt;
         if (timeElapsed > duration) {
             timeElapsed = duration;
         }
-        
-        uint256 delta = (rate * BASE_RATE * timeElapsed) / 
-            ONE_YEAR / 1e18;
+
+        uint256 delta = (rate * BASE_RATE * timeElapsed) / ONE_YEAR / 1e18;
 
         return BASE_RATE + delta;
     }

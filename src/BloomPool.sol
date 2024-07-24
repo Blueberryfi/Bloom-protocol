@@ -13,6 +13,7 @@ pragma solidity 0.8.23;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IBloomPool, State} from "./interfaces/IBloomPool.sol";
 import {IEmergencyHandler} from "./interfaces/IEmergencyHandler.sol";
+import {IRegistry} from "./interfaces/IRegistry.sol";
 import {ISwapRecipient} from "./interfaces/ISwapRecipient.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -30,6 +31,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     using CommitmentsLib for AssetCommitment;
     using SafeTransferLib for address;
     using SafeCastLib for uint256;
+    using Math for uint256;
 
     uint256 internal constant BPS = 1e4; // Represents Scaling & Initial BPS Feed Rate
     uint256 internal constant ONE_YEAR = 360 days;
@@ -39,6 +41,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
     address public immutable UNDERLYING_TOKEN;
     address public immutable BILL_TOKEN;
     IWhitelist public immutable WHITELIST;
+    IRegistry public immutable EXCHANGE_RATE_REGISTRY;
     address public immutable SWAP_FACILITY;
     address public immutable EMERGENCY_HANDLER;
     address public immutable LENDER_RETURN_BPS_FEED;
@@ -84,6 +87,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         address underlyingToken,
         address billToken,
         IWhitelist whitelist,
+        IRegistry exchangeRateRegistry,
         address swapFacility,
         address lenderReturnBpsFeed,
         address emergencyHandler,
@@ -101,6 +105,7 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
         SWAP_FACILITY = swapFacility;
         LENDER_RETURN_BPS_FEED = lenderReturnBpsFeed;
         EMERGENCY_HANDLER = emergencyHandler;
+        EXCHANGE_RATE_REGISTRY = exchangeRateRegistry;
         LEVERAGE_BPS = leverageBps;
         MIN_BORROW_DEPOSIT = minBorrowDeposit;
         COMMIT_PHASE_END = block.timestamp + commitPhaseDuration;
@@ -324,7 +329,13 @@ contract BloomPool is IBloomPool, ISwapRecipient, ERC20 {
             yieldGenerating
         );
 
+        // Set the lender exchange rate.
+        yieldGenerating
+            ? EXCHANGE_RATE_REGISTRY.setEmergencyRate(lenderDistro.divWadUp(totalMatched))
+            : EXCHANGE_RATE_REGISTRY.setEmergencyRate(Math.WAD);
+ 
         IEmergencyHandler(EMERGENCY_HANDLER).registerPool(redemptionInfo);
+
     }
 
     function executeEmergencyBurn(

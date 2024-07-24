@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
-interface IStUSD {
 
+// TODO: Update to handle any LayerZero changes.
+interface IStTBY {
     /**
      * @notice Invokes the auto stake feature or adjusts the remaining balance
      * if the most recent deposit did not get fully staked

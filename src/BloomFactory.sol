@@ -19,12 +19,12 @@ import {SwapFacility} from "./SwapFacility.sol";
 import {IBloomFactory} from "./interfaces/IBloomFactory.sol";
 import {IWhitelist} from "./interfaces/IWhitelist.sol";
 import {IRegistry} from "./interfaces/IRegistry.sol";
-import {IStUSD} from "./interfaces/IStUSD.sol";
+import {IStTBY} from "./interfaces/IStTBY.sol";
 
 contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
-    // =================== Storage ===================   
-    address private _lastCreatedPool;    
-    address private _stUSD;
+    // =================== Storage ===================
+    address private _lastCreatedPool;
+    address private _stTBY;
     mapping(address => bool) private _isPoolFromFactory;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -41,22 +41,19 @@ contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
         return _lastCreatedPool;
     }
 
-    function getStUSD() external view returns (address) {
-        return _stUSD;
+    function getStTBY() external view returns (address) {
+        return _stTBY;
     }
 
-    function isPoolFromFactory(address pool)
-        external
-        view
-        override
-        returns (bool) 
-    {
+    function isPoolFromFactory(
+        address pool
+    ) external view override returns (bool) {
         return _isPoolFromFactory[pool];
     }
 
-    function setStUSD(address stUSD) external onlyOwner {
-        _stUSD = stUSD;
-        emit NewStUSD(_stUSD);
+    function setStTBY(address stTBY) external onlyOwner {
+        _stTBY = stTBY;
+        emit StTBYSet(_stTBY);
     }
 
     function create(
@@ -69,14 +66,17 @@ contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
         SwapFacilityParams calldata swapFacilityParams,
         uint256 factoryNonce
     ) external override onlyOwner returns (BloomPool) {
-        // Poke StUSD prior to deploying a new BloomPool to ensure that there is no double account
-        if (_stUSD != address(0)) {
-            IStUSD(_stUSD).poke();
+        // Poke StTBY prior to deploying a new BloomPool to ensure that there is no double account
+        if (_stTBY != address(0)) {
+            IStTBY(_stTBY).poke();
         }
 
         // Precompute the address of the BloomPool
-        address expectedPoolAddress = LibRLP.computeAddress(address(this), factoryNonce + 1);
-        
+        address expectedPoolAddress = LibRLP.computeAddress(
+            address(this),
+            factoryNonce + 1
+        );
+
         // Deploys SwapFacility
         SwapFacility swapFacility = new SwapFacility(
             underlyingToken,
@@ -95,6 +95,7 @@ contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
             underlyingToken,
             billToken,
             IWhitelist(poolParams.borrowerWhiteList),
+            exchangeRateRegistry,
             address(swapFacility),
             poolParams.lenderReturnBpsFeed,
             poolParams.emergencyHandler,
@@ -108,7 +109,7 @@ contract BloomFactory is IBloomFactory, Ownable2StepUpgradeable {
         );
 
         // Verify that the deployed BloomPool address matches the expected address
-        // If this isn't the case we should revert because the swap facility is associated 
+        // If this isn't the case we should revert because the swap facility is associated
         //     with the wrong address
         if (address(bloomPool) != expectedPoolAddress) {
             revert InvalidPoolAddress();

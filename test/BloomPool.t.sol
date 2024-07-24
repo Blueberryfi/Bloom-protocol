@@ -86,6 +86,7 @@ contract BloomPoolTest is Test {
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
             whitelist: IWhitelist(address(whitelist)),
+            exchangeRateRegistry: registry,
             swapFacility: address(swap),
             leverageBps: 4 * BPS,
             emergencyHandler: address(emergencyHandler),
