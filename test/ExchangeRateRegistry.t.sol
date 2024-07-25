@@ -65,10 +65,13 @@ contract ExchangeRateRegistryTest is Test {
 
         feed.setRate(ORACLE_RATE);
 
+        registry = new ExchangeRateRegistry(registryOwner, factory);
+
         pool = new BloomPool({
             underlyingToken: address(stableToken),
             billToken: address(billyToken),
             whitelist: IWhitelist(address(whitelist)),
+            exchangeRateRegistry: registry,
             swapFacility: address(swap),
             leverageBps: 4 * BPS,
             emergencyHandler: address(0),
@@ -80,8 +83,6 @@ contract ExchangeRateRegistryTest is Test {
             name: "Term Bound Token 6 month 2023-06-1",
             symbol: "TBT-1"
         });
-
-        registry = new ExchangeRateRegistry(registryOwner, factory);
     }
 
     function test_RegistryOwner() public {
@@ -125,5 +126,10 @@ contract ExchangeRateRegistryTest is Test {
         
         vm.prank(registryOwner);
         registry.updateBloomFactory(newFactory);
+    }
+
+    function test_NonePoolEmergency() public {
+        vm.expectRevert(ExchangeRateRegistry.InvalidUser.selector);
+        registry.setEmergencyRate(1.1e18);
     }
 }

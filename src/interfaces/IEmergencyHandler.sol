@@ -55,7 +55,7 @@ interface IEmergencyHandler {
      * @param _pool BloomPool that the funds in the emergency handler contract orginated from
      * @return amount of underlying assets redeemed
      */
-    function redeem(IBloomPool _pool) external returns (uint256);
+    function redeemLender(IBloomPool _pool) external returns (uint256);
 
     /**
      * @notice  Redeem underlying assets for borrowers of a BloomPool in Emergency Exit mode
@@ -63,7 +63,7 @@ interface IEmergencyHandler {
      * @param id Id of the borrowers commit in the corresponding BloomPool
      * @return amount of underlying assets redeemed
      */
-    function redeem(IBloomPool pool, uint256 id) external returns (uint256);
+    function redeemBorrower(IBloomPool pool, uint256 id) external returns (uint256);
 
     /**
      * @notice Allows Market Makers to swap underlying assets for bill tokens

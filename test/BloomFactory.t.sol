@@ -101,10 +101,10 @@ contract BloomFactoryTest is Test {
         BloomPool pool = _newPoolInstance();
 
         // Verfiy that the the factory registers and activates the token on deployment
-        (bool isRegistered, bool isActive, ) = registry.tokenInfos(address(pool));
+        (bool isRegistered, bool isActive, bool emergency, ) = registry.tokenInfos(address(pool));
         assertEq(isRegistered, true);
         assertEq(isActive, true);
-
+        assertEq(emergency, false);
     }
 
     function _newPoolInstance() private returns (BloomPool) {

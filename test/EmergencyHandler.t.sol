@@ -30,6 +30,8 @@ import {IBloomPool} from "src/interfaces/IBloomPool.sol";
 import {IWhitelist} from "src/interfaces/IWhitelist.sol";
 
 contract EmergencyHandlerTest is Test {
+    using Math for uint256;
+
     address internal multisig = makeAddr("multisig");
     address internal rando = makeAddr("rando");
     MockERC20 internal stableToken;
@@ -136,12 +138,12 @@ contract EmergencyHandlerTest is Test {
         MockBloomPool pool2 = new MockBloomPool(address(stableToken), address(billyToken), address(swap));
         vm.startPrank(lender);
         vm.expectRevert(IEmergencyHandler.PoolNotRegistered.selector);
-        handler.redeem(IBloomPool(address(pool2)));
+        handler.redeemLender(IBloomPool(address(pool2)));
         vm.stopPrank();
 
         // Successfully redeem
         vm.startPrank(lender);
-        uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)));
+        uint256 amountRedeemed = handler.redeemLender(IBloomPool(address(pool)));
         vm.stopPrank();
 
         assertEq(amountRedeemed, 408000000);
@@ -152,7 +154,7 @@ contract EmergencyHandlerTest is Test {
         // Lender tries to redeem again
         vm.startPrank(lender);
         vm.expectRevert(IEmergencyHandler.NoTokensToRedeem.selector);
-        handler.redeem(IBloomPool(address(pool)));
+        handler.redeemLender(IBloomPool(address(pool)));
         vm.stopPrank();
     }
 
@@ -173,12 +175,12 @@ contract EmergencyHandlerTest is Test {
         // Fail if rando tries to redeem
         vm.startPrank(rando);
         vm.expectRevert(IEmergencyHandler.InvalidOwner.selector);
-        handler.redeem(IBloomPool(address(pool)), id);
+        handler.redeemBorrower(IBloomPool(address(pool)), id);
         vm.stopPrank();
         
         // Successfully redeem
         vm.startPrank(borrower);
-        uint256 amountRedeemed = handler.redeem(IBloomPool(address(pool)), id);
+        uint256 amountRedeemed = handler.redeemBorrower(IBloomPool(address(pool)), id);
         vm.stopPrank();
 
         assertEq(amountRedeemed, 92000000);
@@ -188,7 +190,7 @@ contract EmergencyHandlerTest is Test {
         // Fail if borrower tries to redeem again
         vm.startPrank(borrower);
         vm.expectRevert(IEmergencyHandler.NoTokensToRedeem.selector);
-        handler.redeem(IBloomPool(address(pool)), id);
+        handler.redeemBorrower(IBloomPool(address(pool)), id);
         vm.stopPrank();
     }
 
@@ -246,6 +248,8 @@ contract EmergencyHandlerTest is Test {
         );
 
         vm.startPrank(address(pool));
+        // Set the lender exchange rate.
+        registry.setEmergencyRate(lenderDistro.divWadUp(lenderAmount));
         handler.registerPool(redemptionInfo);
         vm.stopPrank();
     }
@@ -285,6 +289,7 @@ contract EmergencyHandlerTest is Test {
         );
 
         vm.startPrank(address(pool));
+        registry.setEmergencyRate(lenderDistro.divWadUp(lenderAmount));
         handler.registerPool(redemptionInfo);
         vm.stopPrank();
     }

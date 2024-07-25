@@ -32,18 +32,24 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
 
     ExchangeRateRegistry public REGISTRY;
     mapping(address => RedemptionInfo) public redemptionInfo;
-    mapping(address => mapping(uint256 => ClaimStatus)) public borrowerClaimStatus;
+    mapping(address => mapping(uint256 => ClaimStatus))
+        public borrowerClaimStatus;
 
     // ================== Modifiers ==================
 
     modifier onlyPool() {
-        (bool registered, , ) = REGISTRY.tokenInfos(msg.sender);
+        (bool registered, , , ) = REGISTRY.tokenInfos(msg.sender);
         if (!registered) revert CallerNotBloomPool();
         _;
     }
 
     modifier onlyWhitelisted(IBloomPool pool, bytes32[] calldata proof) {
-        if (!ISwapFacility(pool.SWAP_FACILITY()).whitelist().isWhitelisted(msg.sender, proof)) {
+        if (
+            !ISwapFacility(pool.SWAP_FACILITY()).whitelist().isWhitelisted(
+                msg.sender,
+                proof
+            )
+        ) {
             revert NotWhitelisted();
         }
         _;
@@ -55,11 +61,14 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
     }
 
     /**
-     * 
+     *
      * @param registry ExchangeRateRegistry
      * @param owner Address of the owner of the contract
      */
-    function initialize(ExchangeRateRegistry registry, address owner) external initializer {
+    function initialize(
+        ExchangeRateRegistry registry,
+        address owner
+    ) external initializer {
         __Ownable2Step_init();
         _transferOwnership(owner);
 
@@ -69,7 +78,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
     /**
      * @inheritdoc IEmergencyHandler
      */
-    function redeem(IBloomPool pool) external override returns (uint256) {
+    function redeemLender(IBloomPool pool) external override returns (uint256) {
         uint256 claimAmount;
         // Get data for the associated pool
         RedemptionInfo memory info = redemptionInfo[address(pool)];
@@ -89,10 +98,15 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
         }
 
         // Update the claim amount if it is greater than the current availablity of underlying tokens
-        if (claimAmount > info.accounting.lenderDistro) claimAmount = info.accounting.lenderDistro;
-        if (claimAmount > info.accounting.totalUnderlying) claimAmount = info.accounting.totalUnderlying;
+        if (claimAmount > info.accounting.lenderDistro) {
+            claimAmount = info.accounting.lenderDistro;
+        }
+        if (claimAmount > info.accounting.totalUnderlying) {
+            claimAmount = info.accounting.totalUnderlying;
+        }
 
-        uint256 burnAmount = info.accounting.lenderShares * claimAmount / info.accounting.lenderDistro;
+        uint256 burnAmount = (info.accounting.lenderShares * claimAmount) /
+            info.accounting.lenderDistro;
 
         info.accounting.lenderDistro -= claimAmount;
         info.accounting.lenderShares -= burnAmount;
@@ -108,7 +122,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
     /**
      * @inheritdoc IEmergencyHandler
      */
-    function redeem(
+    function redeemBorrower(
         IBloomPool pool,
         uint256 id
     ) external override returns (uint256) {
@@ -126,30 +140,38 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
         uint256 commitmentAvailable = commitment.committedAmount;
 
         if (commitment.owner != msg.sender) revert InvalidOwner();
-        
+
         // If the user has already claimed, update how much they can claim this round
         if (claimStatus.claimed) {
             commitmentAvailable = claimStatus.amountRemaining;
-        } 
+        }
 
         // Calculate the amount of underlying tokens to send to the user
         if (info.yieldGenerated) {
-            claimAmount = commitmentAvailable * accounting.borrowerDistro / accounting.borrowerShares;
+            claimAmount =
+                (commitmentAvailable * accounting.borrowerDistro) /
+                accounting.borrowerShares;
         } else {
             claimAmount = commitmentAvailable;
         }
 
         // Update the claim amount if it is greater than the current availablity of underlying tokens
-        if (claimAmount > accounting.borrowerDistro) claimAmount = accounting.borrowerDistro;
-        if (claimAmount > accounting.totalUnderlying) claimAmount = accounting.totalUnderlying;
+        if (claimAmount > accounting.borrowerDistro) {
+            claimAmount = accounting.borrowerDistro;
+        }
+        if (claimAmount > accounting.totalUnderlying) {
+            claimAmount = accounting.totalUnderlying;
+        }
 
-        uint256 commitmentUsed = claimAmount * accounting.borrowerShares / accounting.borrowerDistro;
+        uint256 commitmentUsed = (claimAmount * accounting.borrowerShares) /
+            accounting.borrowerDistro;
 
         // Update accounting data
         redemptionInfo[address(pool)].accounting.borrowerDistro -= claimAmount;
-        redemptionInfo[address(pool)].accounting.borrowerShares -= commitmentUsed;
+        redemptionInfo[address(pool)]
+            .accounting
+            .borrowerShares -= commitmentUsed;
         redemptionInfo[address(pool)].accounting.totalUnderlying -= claimAmount;
-
 
         if (commitmentUsed == 0 || claimAmount == 0) revert NoTokensToRedeem();
 
@@ -158,7 +180,7 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
             claimed: true,
             amountRemaining: commitmentAvailable - commitmentUsed
         });
-        
+
         // Transfer tokens to borrower
         underlyingToken.safeTransfer(msg.sender, claimAmount);
         return claimAmount;
@@ -178,17 +200,22 @@ contract EmergencyHandler is IEmergencyHandler, Ownable2StepUpgradeable {
         Token memory billToken = info.billToken;
 
         // Calculate the amount of bill tokens to send to the user
-        uint256 scalingFactor = 10**(billToken.rateDecimals - underlyingToken.rateDecimals);
+        uint256 scalingFactor = 10 **
+            (billToken.rateDecimals - underlyingToken.rateDecimals);
 
         uint256 inTokenPrice = underlyingToken.rate;
         uint256 outTokenPrice = billToken.rate;
-        uint256 outAmount = underlyingIn * inTokenPrice * scalingFactor / outTokenPrice;
-        
+        uint256 outAmount = (underlyingIn * inTokenPrice * scalingFactor) /
+            outTokenPrice;
+
         // Update the amount if it is greater than the current availablity of bill tokens
         if (outAmount > info.accounting.totalBill) {
             outAmount = info.accounting.totalBill;
             // Recalculate the amount of underlying tokens to send to the user
-            underlyingIn = outAmount * outTokenPrice / inTokenPrice / scalingFactor;
+            underlyingIn =
+                (outAmount * outTokenPrice) /
+                inTokenPrice /
+                scalingFactor;
         }
 
         // Update accounting data
